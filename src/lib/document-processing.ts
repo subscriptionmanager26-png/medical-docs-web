@@ -1,4 +1,4 @@
-import { PDFParse } from "pdf-parse";
+import pdfParse from "pdf-parse";
 import { DOCUMENT_CATEGORIES, type DocumentCategory } from "@/lib/categories";
 import OpenAI from "openai";
 import { requireEnv } from "@/lib/env";
@@ -11,13 +11,9 @@ export async function extractTextFromBuffer(
   buffer: Buffer,
 ): Promise<string> {
   if (mimeType === "application/pdf" || mimeType.endsWith("/pdf")) {
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
-    try {
-      const textResult = await parser.getText();
-      return textResult.text?.trim() ?? "";
-    } finally {
-      await parser.destroy();
-    }
+    // pdf-parse 1.x avoids pdfjs-dist + @napi-rs/canvas (unreliable on Vercel serverless).
+    const data = await pdfParse(buffer);
+    return (data.text ?? "").trim();
   }
   if (mimeType.startsWith("text/") || mimeType === "application/json") {
     return buffer.toString("utf8").trim();
