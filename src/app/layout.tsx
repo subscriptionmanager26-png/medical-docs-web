@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Medical Docs Vault",
+  title: "MediSage — Health data copilot",
   description:
-    "Upload medical documents to your Google Drive and ask questions with AI.",
+    "MediSage organizes your medical documents in Drive and answers questions with citations from your own files.",
 };
 
 export default function RootLayout({
@@ -28,7 +28,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col font-sans antialiased">
+        {children}
+      </body>
     </html>
   );
 }
