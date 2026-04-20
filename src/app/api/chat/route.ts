@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase/server";
-import { embedTexts } from "@/lib/document-processing";
 import { requireEnv } from "@/lib/env";
+import { retrieveMergedChunksForChat } from "@/lib/vector-search";
 
 export const runtime = "nodejs";
 
@@ -11,54 +11,7 @@ const bodySchema = z.object({
   message: z.string().min(1).max(8000),
 });
 
-/** Per-query RPC limit; we merge two retrieval passes then dedupe. */
-const MATCH_COUNT_PER_QUERY = 16;
-const MERGED_CHUNK_CAP = 28;
-
-/** Generic probe so broad questions (“what’s in my files?”) still surface real chunks. */
-const BROAD_RETRIEVAL_PROBE =
-  "Medical record document: patient history, chief complaint, visit notes, laboratory results, blood test values, imaging report, radiology, prescription medications, diagnosis, treatment, allergies, vital signs, dates, clinic and provider names, insurance, discharge summary.";
-
-type ChunkRow = {
-  chunk_content: string;
-  similarity: number;
-  document_id: string;
-};
-
-function normalizeRpcChunkRows(raw: unknown): ChunkRow[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((row) => {
-      const r = row as Record<string, unknown>;
-      const content = String(
-        r.chunk_content ?? r.chunkContent ?? r.content ?? "",
-      ).trim();
-      const documentId = String(r.document_id ?? r.documentId ?? "");
-      const sim = Number(r.similarity ?? r.Similarity ?? 0);
-      return {
-        chunk_content: content,
-        similarity: Number.isFinite(sim) ? sim : 0,
-        document_id: documentId,
-      };
-    })
-    .filter((m) => m.chunk_content.length > 0);
-}
-
-function mergeChunkRows(a: ChunkRow[], b: ChunkRow[], cap: number): ChunkRow[] {
-  const combined = [...a, ...b].sort((x, y) => y.similarity - x.similarity);
-  const seen = new Set<string>();
-  const out: ChunkRow[] = [];
-  for (const row of combined) {
-    const key = `${row.document_id}:${row.chunk_content.slice(0, 160)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(row);
-    if (out.length >= cap) break;
-  }
-  return out;
-}
-
-export async function POST(request: NextRequest) {
+export async function POST (request: NextRequest) {
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
@@ -75,30 +28,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [queryEmbedding, broadEmbedding] = await embedTexts([
-    parsed.data.message,
-    BROAD_RETRIEVAL_PROBE,
-  ]);
+  const { rows, qRows, bRows, error: retrievalError } =
+    await retrieveMergedChunksForChat(supabase, parsed.data.message);
 
-  const [qRes, bRes] = await Promise.all([
-    supabase.rpc("match_document_chunks", {
-      query_embedding: queryEmbedding,
-      match_count: MATCH_COUNT_PER_QUERY,
-    }),
-    supabase.rpc("match_document_chunks", {
-      query_embedding: broadEmbedding,
-      match_count: MATCH_COUNT_PER_QUERY,
-    }),
-  ]);
-
-  const matchError = qRes.error ?? bRes.error;
-  if (matchError) {
-    return NextResponse.json({ error: matchError.message }, { status: 500 });
+  if (retrievalError) {
+    return NextResponse.json({ error: retrievalError }, { status: 500 });
   }
 
-  const qRows = normalizeRpcChunkRows(qRes.data);
-  const bRows = normalizeRpcChunkRows(bRes.data);
-  const rows = mergeChunkRows(qRows, bRows, MERGED_CHUNK_CAP);
   const maxSimilarity =
     rows.length > 0 ? Math.max(...rows.map((r) => r.similarity)) : 0;
 
