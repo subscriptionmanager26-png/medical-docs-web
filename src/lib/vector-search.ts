@@ -66,6 +66,11 @@ export type MergedRetrievalResult = {
 /**
  * Embeds the user message plus a broad medical probe, runs match_document_chunks
  * twice, merges and dedupes. RPC must filter with auth.uid() (see migration).
+ *
+ * Tenant isolation: all users share one `document_chunks` table. Rows are scoped
+ * with `user_id`, enforced by RLS and by the RPC joining `documents` so only the
+ * caller's chunks return. This is the usual Postgres/Supabase pattern — not a
+ * separate database or physical table per tenant.
  */
 export async function retrieveMergedChunksForChat (
   supabase: SupabaseClient,

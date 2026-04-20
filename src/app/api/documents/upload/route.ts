@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
           150_000,
           "Embedding",
         );
+        // Vector index: scoped to user_id for Supabase pgvector retrieval.
         const { error: chunkErr } = await supabase.from("document_chunks").insert(
           chunks.map((content, i) => ({
             document_id: docRow.id,
