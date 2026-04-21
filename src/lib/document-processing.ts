@@ -6,6 +6,57 @@ import { requireEnv } from "@/lib/env";
 const CHUNK_SIZE = 1800;
 const CHUNK_OVERLAP = 200;
 
+/** PDFs shorter than this (after whitespace collapse) are treated as non-indexable text. */
+const PDF_MIN_EXTRACTED_CHARS = 80;
+
+export type VectorIndexPrep = {
+  /** Text passed to chunking + embeddings. */
+  textForChunks: string;
+  /** When set, upload should show this to the user (e.g. scan-only PDF). */
+  weakIndexWarning?: string;
+};
+
+/**
+ * Builds the string we chunk and embed. Image-only / scanned PDFs often yield
+ * empty or tiny text from pdf-parse; indexing only the file name makes Copilot
+ * look "broken". Instead we embed an explicit notice the model can quote.
+ */
+export function prepareTextForVectorIndexing (
+  extractedText: string,
+  fileName: string,
+  mimeType: string,
+): VectorIndexPrep {
+  const trimmed = extractedText.trim();
+  const collapsedLen = extractedText.replace(/\s+/g, " ").trim().length;
+  const isPdf = mimeType === "application/pdf" || mimeType.endsWith("/pdf");
+  const minChars = isPdf ? PDF_MIN_EXTRACTED_CHARS : 1;
+
+  if (collapsedLen >= minChars) {
+    return { textForChunks: trimmed };
+  }
+
+  const weakIndexWarning =
+    "Little or no text could be extracted from this PDF (common for scans, screenshots, or photos saved as PDF). " +
+    "Only an indexing notice was stored—Copilot cannot read tables or images without OCR. " +
+    "Try a text-based PDF, export to .txt, or use a plain text file.";
+
+  const notice =
+    `[Indexed content unavailable for "${fileName}"] ` +
+    `The PDF parser found no usable text (${collapsedLen} characters after cleanup). ` +
+    `Typical causes: scanned pages, image-only PDFs, or complex layouts. MediSage does not run OCR. ` +
+    `To ask questions about data, upload a text-based PDF, paste content into a .txt file, or export tables to text.`;
+
+  return {
+    textForChunks: notice,
+    weakIndexWarning,
+  };
+}
+
+/** True when chunk text is our synthetic "no extractable text" notice. */
+export function isPlaceholderIndexChunk (chunkContent: string): boolean {
+  return chunkContent.trimStart().startsWith("[Indexed content unavailable");
+}
+
 export async function extractTextFromBuffer(
   mimeType: string,
   buffer: Buffer,

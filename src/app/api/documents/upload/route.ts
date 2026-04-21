@@ -5,6 +5,7 @@ import {
   classifyDocument,
   embedTexts,
   extractTextFromBuffer,
+  prepareTextForVectorIndexing,
 } from "@/lib/document-processing";
 import { ensureDriveStructure, uploadToDriveFolder } from "@/lib/google-drive";
 import type { DocumentCategory } from "@/lib/categories";
@@ -157,10 +158,23 @@ export async function POST(request: NextRequest) {
 
     push({ type: "progress", step: "saving", phase: "completed" });
 
-    const chunks = chunkText(text || file.name);
+    const { textForChunks, weakIndexWarning } = prepareTextForVectorIndexing(
+      text,
+      file.name,
+      mimeType,
+    );
+    const chunks = chunkText(textForChunks || file.name);
     let partial = false;
-    let warning: string | undefined;
+    let warning: string | undefined = weakIndexWarning;
     let detail: string | undefined;
+
+    console.info("[upload] index prep", {
+      fileName: file.name,
+      mimeType,
+      rawExtractLen: text.length,
+      chunkCount: chunks.length,
+      weakIndex: Boolean(weakIndexWarning),
+    });
 
     if (chunks.length > 0) {
       try {
@@ -183,12 +197,14 @@ export async function POST(request: NextRequest) {
         if (chunkErr) {
           partial = true;
           warning =
+            (warning ? `${warning} ` : "") +
             "File is on Google Drive, but search chunks could not be saved.";
           detail = chunkErr.message;
         }
       } catch {
         partial = true;
         warning =
+          (warning ? `${warning} ` : "") +
           "File is on Google Drive, but embedding/indexing timed out. You can re-upload or try again later.";
       }
     }
@@ -199,7 +215,7 @@ export async function POST(request: NextRequest) {
       documentId: docRow.id,
       category,
       driveFileId,
-      partial,
+      partial: partial || Boolean(weakIndexWarning),
       warning,
       detail,
     });

@@ -432,7 +432,11 @@ export function AppShell() {
     const data = (await res.json()) as {
       answer?: string;
       error?: string;
-      retrieval?: { chunkCount?: number; maxSimilarity?: number | null };
+      retrieval?: {
+        chunkCount?: number;
+        maxSimilarity?: number | null;
+        weakExcerpts?: boolean;
+      };
       citations?: Citation[];
     };
     setChatting(false);
@@ -453,6 +457,10 @@ export function AppShell() {
     let retrievalNote: string | null = null;
     if (typeof n === "number" && n > 0 && typeof sim === "number") {
       retrievalNote = `Used ${n} snippet${n === 1 ? "" : "s"} from your vault (best match ${sim.toFixed(3)}).`;
+      if (data.retrieval?.weakExcerpts) {
+        retrievalNote +=
+          " Some matches are “no extractable text” notices (common for scan/photo PDFs)—re-upload as text or export to .txt for full answers.";
+      }
     } else if (typeof n === "number" && n === 0) {
       retrievalNote = "No indexed passages were found for your account.";
     }

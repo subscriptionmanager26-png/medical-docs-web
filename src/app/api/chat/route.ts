@@ -3,6 +3,7 @@ import { z } from "zod";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase/server";
 import { requireEnv } from "@/lib/env";
+import { isPlaceholderIndexChunk } from "@/lib/document-processing";
 import { retrieveMergedChunksForChat } from "@/lib/vector-search";
 
 export const runtime = "nodejs";
@@ -54,7 +55,7 @@ export async function POST (request: NextRequest) {
 
     return NextResponse.json({
       answer,
-      retrieval: { chunkCount: 0, maxSimilarity: null },
+      retrieval: { chunkCount: 0, maxSimilarity: null, weakExcerpts: false },
       citations: [] as { documentId: string; title: string; driveFileId: string }[],
     });
   }
@@ -92,6 +93,10 @@ export async function POST (request: NextRequest) {
     })
     .join("\n\n---\n\n");
 
+  const weakExcerpts = rows.some((r) =>
+    isPlaceholderIndexChunk(r.chunk_content),
+  );
+
   const client = new OpenAI({ apiKey: requireEnv("OPENAI_API_KEY") });
   const completion = await client.chat.completions.create({
     model: process.env.OPENAI_CHAT_MODEL ?? "gpt-4o-mini",
@@ -104,7 +109,10 @@ export async function POST (request: NextRequest) {
           "Do not reply with a generic refusal like 'I do not have enough information' when excerpts are present; instead summarize what is and is not visible in the provided text. " +
           "If excerpts are only filenames or tiny fragments, say that explicitly. " +
           "For narrow factual questions, answer from excerpts when possible; if excerpts are silent on that exact point, say what IS in the excerpts instead of refusing outright. " +
-          "Do not give medical diagnoses or personalized treatment instructions; you may explain what the text says and suggest a clinician for medical decisions.",
+          "Do not give medical diagnoses or personalized treatment instructions; you may explain what the text says and suggest a clinician for medical decisions." +
+          (weakExcerpts
+            ? " Some excerpts may begin with '[Indexed content unavailable': those mean the PDF had no extractable machine text (often scanned or image PDFs). Explain that clearly and suggest exporting text or using a .txt file; do not imply you can see hidden page content."
+            : ""),
       },
       {
         role: "user",
@@ -123,7 +131,7 @@ export async function POST (request: NextRequest) {
 
   return NextResponse.json({
     answer,
-    retrieval: { chunkCount: rows.length, maxSimilarity },
+    retrieval: { chunkCount: rows.length, maxSimilarity, weakExcerpts },
     citations,
   });
 }
