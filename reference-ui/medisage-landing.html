@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MediSage — Clarity and control for your family's health</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --cream: #f5f3ef;
+  --ink: #1a1e26;
+  --ink-soft: #3a4252;
+  --muted: #7a8898;
+  --steel: #8aaac8;
+  --steel-light: #c8d8e8;
+  --steel-pale: #eaf0f6;
+  --sage: #6a9a80;
+  --amber: #c09050;
+  --border: rgba(160,180,210,0.25);
+  --border-strong: rgba(160,180,210,0.45);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Sora', sans-serif; background: var(--cream); color: var(--ink); overflow-x: hidden; }
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 1000; opacity: 0.5;
+}
+
+/* NAV */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 64px;
+  background: rgba(245,243,239,0.88);
+  backdrop-filter: blur(24px);
+  border-bottom: 0.5px solid var(--border);
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Instrument Serif', serif;
+  font-size: 21px; color: var(--ink); text-decoration: none;
+  letter-spacing: -0.2px;
+}
+.nav-logo-mark {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: linear-gradient(135deg, #7aa0c0, #aac8e0);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.65), 0 2px 10px rgba(120,160,205,0.28);
+}
+.nav-logo-mark svg { width: 17px; height: 17px; }
+.nav-links { display: flex; gap: 36px; align-items: center; }
+.nav-links a { font-size: 13px; font-weight: 400; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+.nav-links a:hover { color: var(--ink); }
+.nav-cta {
+  font-family: 'Sora', sans-serif;
+  font-size: 13px; font-weight: 500;
+  padding: 10px 24px;
+  background: var(--ink); color: var(--cream);
+  border: none; border-radius: 26px; cursor: pointer;
+  box-shadow: 0 2px 14px rgba(26,30,38,0.22);
+  transition: all 0.22s; letter-spacing: 0.2px;
+}
+.nav-cta:hover { transform: translateY(-1px); box-shadow: 0 5px 20px rgba(26,30,38,0.3); }
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 130px 40px 80px;
+  position: relative; overflow: hidden;
+}
+.hero-ring {
+  position: absolute; border-radius: 50%;
+  border: 0.5px solid var(--border);
+  pointer-events: none;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.8px;
+  text-transform: uppercase; color: var(--steel);
+  background: var(--steel-pale);
+  border: 0.5px solid var(--steel-light);
+  padding: 6px 16px; border-radius: 20px;
+  margin-bottom: 36px;
+  animation: fadeUp 0.8s ease both;
+}
+.pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(106,154,128,0.6); } 50%{ box-shadow: 0 0 0 5px rgba(106,154,128,0); } }
+
+.hero-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(48px, 6.5vw, 84px);
+  line-height: 1.06; letter-spacing: -1.5px;
+  color: var(--ink); max-width: 760px;
+  margin-bottom: 26px;
+  animation: fadeUp 0.8s 0.1s ease both;
+}
+.hero-title em { font-style: italic; color: var(--steel); }
+
+.hero-sub {
+  font-size: 16px; font-weight: 300; color: var(--muted);
+  line-height: 1.8; max-width: 500px;
+  margin-bottom: 44px;
+  animation: fadeUp 0.8s 0.2s ease both;
+}
+
+.btn-primary {
+  font-family: 'Sora', sans-serif;
+  font-size: 15px; font-weight: 500;
+  padding: 15px 38px;
+  background: var(--ink); color: var(--cream);
+  border: none; border-radius: 36px; cursor: pointer;
+  box-shadow: 0 4px 22px rgba(26,30,38,0.22);
+  transition: all 0.25s; letter-spacing: 0.2px;
+  animation: fadeUp 0.8s 0.3s ease both;
+  display: inline-block;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(26,30,38,0.3); }
+
+.hero-proof {
+  display: flex; gap: 10px; align-items: center;
+  margin-top: 20px; justify-content: center;
+  animation: fadeUp 0.8s 0.38s ease both;
+}
+.proof-avatars { display: flex; }
+.proof-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid var(--cream);
+  margin-left: -8px; font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Instrument Serif', serif; color: white;
+  font-weight: 400;
+}
+.proof-avatar:first-child { margin-left: 0; }
+.proof-text { font-size: 12px; color: var(--muted); font-weight: 300; }
+.proof-text strong { font-weight: 500; color: var(--ink-soft); }
+
+.hero-stats {
+  display: flex; gap: 56px; margin-top: 72px;
+  animation: fadeUp 0.8s 0.45s ease both;
+  padding-top: 48px;
+  border-top: 0.5px solid var(--border);
+}
+.hero-stat { text-align: center; }
+.stat-num { font-family: 'Instrument Serif', serif; font-size: 38px; color: var(--ink); display: block; margin-bottom: 4px; letter-spacing: -0.5px; }
+.stat-lbl { font-size: 12px; color: var(--muted); font-weight: 300; }
+
+/* MARQUEE */
+.marquee-section {
+  padding: 28px 0;
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  overflow: hidden; background: rgba(255,255,255,0.55);
+}
+.marquee-track { display: flex; animation: marquee 32s linear infinite; width: max-content; }
+.marquee-item {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 0 36px; font-size: 12px; font-weight: 400;
+  color: var(--muted); letter-spacing: 0.3px; white-space: nowrap;
+}
+.marquee-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--steel-light); flex-shrink: 0; }
+@keyframes marquee { from{ transform: translateX(0); } to{ transform: translateX(-50%); } }
+
+/* SECTIONS */
+section { padding: 100px 64px; }
+
+.section-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase; color: var(--steel); margin-bottom: 14px; }
+.section-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(34px, 3.8vw, 52px);
+  line-height: 1.1; letter-spacing: -0.5px;
+  color: var(--ink); max-width: 560px; margin-bottom: 56px;
+}
+.section-title em { font-style: italic; color: var(--steel); }
+
+/* HOW IT WORKS */
+.how-section { background: white; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.step {
+  padding: 40px 36px;
+  border: 0.5px solid var(--border);
+  position: relative; overflow: hidden;
+  transition: background 0.3s;
+}
+.step:hover { background: var(--steel-pale); }
+.step-num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 68px; color: rgba(160,185,215,0.18);
+  line-height: 1; margin-bottom: 24px; letter-spacing: -2px;
+}
+.step-icon {
+  width: 44px; height: 44px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px; border: 0.5px solid var(--border-strong);
+}
+.step-icon svg { width: 20px; height: 20px; }
+.step-title { font-family: 'Instrument Serif', serif; font-size: 22px; color: var(--ink); margin-bottom: 10px; }
+.step-desc { font-size: 13.5px; color: var(--muted); font-weight: 300; line-height: 1.75; }
+
+/* FEATURES */
+.features-section { background: var(--cream); }
+.features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 900px; }
+.feature-card {
+  background: white; border: 0.5px solid var(--border);
+  border-radius: 22px; padding: 32px;
+  transition: all 0.25s; position: relative; overflow: hidden;
+}
+.feature-card::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--steel), var(--steel-light));
+  opacity: 0; transition: opacity 0.3s;
+}
+.feature-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(130,160,200,0.13); }
+.feature-card:hover::after { opacity: 1; }
+.feature-card.sage::after { background: linear-gradient(90deg, var(--sage), #a8d0b8); }
+.feature-card.amber::after { background: linear-gradient(90deg, var(--amber), #d8b870); }
+.feature-icon {
+  width: 42px; height: 42px; border-radius: 13px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 18px; border: 0.5px solid var(--border);
+}
+.feature-icon svg { width: 19px; height: 19px; }
+.feature-title { font-family: 'Instrument Serif', serif; font-size: 21px; color: var(--ink); margin-bottom: 8px; }
+.feature-desc { font-size: 13.5px; color: var(--muted); font-weight: 300; line-height: 1.72; }
+.feature-card.wide { grid-column: 1 / -1; display: flex; gap: 36px; align-items: center; }
+.feature-card.wide .feature-icon { width: 52px; height: 52px; border-radius: 16px; flex-shrink: 0; margin-bottom: 0; }
+.feature-card.wide .feature-icon svg { width: 22px; height: 22px; }
+.feature-card.wide .feature-content {}
+
+/* RECORDS VISUAL */
+.records-section {
+  background: white;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 80px; align-items: center;
+  padding: 100px 64px;
+}
+.records-text {}
+.records-visual {}
+.record-stack { display: flex; flex-direction: column; gap: 10px; }
+.record-item {
+  background: var(--cream);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 16px; padding: 16px 18px;
+  display: flex; align-items: center; gap: 14px;
+  transition: all 0.25s;
+}
+.record-item:hover { background: white; transform: translateX(4px); box-shadow: 0 4px 20px rgba(130,160,200,0.12); }
+.record-item.featured {
+  background: white;
+  border-color: var(--steel-light);
+  box-shadow: 0 4px 20px rgba(130,160,200,0.12);
+}
+.record-icon-wrap {
+  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0.5px solid var(--border);
+}
+.record-icon-wrap svg { width: 17px; height: 17px; }
+.record-body { flex: 1; }
+.record-title { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+.record-meta { font-size: 11.5px; color: var(--muted); font-weight: 300; }
+.record-date { font-size: 11px; color: var(--muted); font-weight: 300; white-space: nowrap; }
+.record-badge {
+  font-size: 10px; font-weight: 500;
+  padding: 3px 9px; border-radius: 10px;
+}
+.badge-new { background: rgba(80,165,110,0.1); color: #2e7a50; border: 0.5px solid rgba(80,165,110,0.25); }
+.badge-old { background: rgba(160,180,210,0.12); color: var(--muted); border: 0.5px solid rgba(160,180,210,0.3); }
+.timeline-connector {
+  width: 1px; height: 20px; background: var(--border-strong);
+  margin: 0 0 0 30px;
+}
+
+/* TESTIMONIALS */
+.testimonial-section { background: var(--ink); padding: 100px 64px; position: relative; overflow: hidden; }
+.testimonial-section::before {
+  content: ''; position: absolute; top: -200px; right: -150px;
+  width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(138,170,200,0.07) 0%, transparent 65%);
+}
+.tgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 0; }
+.t-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase; color: rgba(138,170,200,0.65); margin-bottom: 14px; }
+.t-headline {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(34px, 4vw, 50px);
+  color: rgba(245,243,239,0.95); line-height: 1.1; letter-spacing: -0.5px;
+  max-width: 500px; margin-bottom: 56px;
+}
+.t-headline em { font-style: italic; color: var(--steel-light); }
+.tcard { background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.08); padding: 36px; transition: background 0.3s; }
+.tcard:hover { background: rgba(255,255,255,0.07); }
+.tcard-quote { font-family: 'Instrument Serif', serif; font-size: 19px; color: rgba(238,243,248,0.88); line-height: 1.55; margin-bottom: 24px; font-style: italic; }
+.tcard-author { display: flex; align-items: center; gap: 12px; }
+.tcard-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(135deg, rgba(138,170,200,0.28), rgba(138,170,200,0.12));
+  border: 0.5px solid rgba(255,255,255,0.13);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Instrument Serif', serif; font-size: 16px;
+  color: rgba(200,220,240,0.8);
+}
+.tcard-name { font-size: 13px; font-weight: 500; color: rgba(220,230,245,0.85); margin-bottom: 2px; }
+.tcard-role { font-size: 11.5px; color: rgba(138,170,200,0.55); font-weight: 300; }
+
+/* CTA */
+.cta-section { padding: 120px 64px; background: var(--cream); text-align: center; position: relative; overflow: hidden; }
+.cta-ring { position: absolute; border-radius: 50%; border: 0.5px solid var(--border); top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.cta-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(42px, 5.5vw, 72px);
+  line-height: 1.07; letter-spacing: -1px;
+  color: var(--ink); max-width: 680px; margin: 0 auto 22px;
+  position: relative; z-index: 2;
+}
+.cta-title em { font-style: italic; color: var(--steel); }
+.cta-sub {
+  font-size: 15px; font-weight: 300; color: var(--muted);
+  max-width: 400px; margin: 0 auto 40px; line-height: 1.75;
+  position: relative; z-index: 2;
+}
+.cta-btn-wrap { position: relative; z-index: 2; }
+
+/* FOOTER */
+footer { background: var(--ink); padding: 64px 64px 40px; }
+.footer-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 52px; }
+.footer-logo { font-family: 'Instrument Serif', serif; font-size: 22px; color: rgba(245,243,239,0.9); display: flex; align-items: center; gap: 10px; }
+.footer-tagline { font-size: 12px; font-weight: 300; color: rgba(138,170,200,0.45); margin-top: 8px; max-width: 240px; line-height: 1.65; }
+.footer-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px; }
+.footer-col-title { font-size: 10.5px; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase; color: rgba(200,215,235,0.45); margin-bottom: 16px; }
+.footer-col a { display: block; font-size: 13px; font-weight: 300; color: rgba(180,200,225,0.5); text-decoration: none; margin-bottom: 10px; transition: color 0.2s; }
+.footer-col a:hover { color: rgba(200,220,245,0.8); }
+.footer-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 32px; border-top: 0.5px solid rgba(255,255,255,0.06); }
+.footer-copy { font-size: 12px; font-weight: 300; color: rgba(120,145,175,0.45); }
+.footer-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(120,145,175,0.45); }
+.footer-badge-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--sage); }
+
+/* ANIMATIONS */
+@keyframes fadeUp { from{ opacity:0; transform:translateY(22px); } to{ opacity:1; transform:translateY(0); } }
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.rd1{ transition-delay: 0.08s; } .rd2{ transition-delay: 0.17s; } .rd3{ transition-delay: 0.26s; }
+
+@media (max-width: 960px) {
+  nav { padding: 16px 24px; }
+  .nav-links { display: none; }
+  section, .records-section { padding: 64px 24px; }
+  .hero { padding: 100px 24px 60px; }
+  .hero-stats { gap: 28px; flex-wrap: wrap; justify-content: center; }
+  .steps, .tgrid { grid-template-columns: 1fr; }
+  .features-grid { grid-template-columns: 1fr; }
+  .feature-card.wide { flex-direction: column; }
+  .records-section { grid-template-columns: 1fr; gap: 48px; }
+  .footer-top { flex-direction: column; gap: 32px; }
+  .footer-links { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 17 17" fill="none">
+        <path d="M8.5 2.5C8.5 2.5 4 6 4 10.5C4 13.1 6.1 15 8.5 15C10.9 15 13 13.1 13 10.5C13 6 8.5 2.5 8.5 2.5Z" stroke="rgba(255,255,255,0.92)" stroke-width="1.2"/>
+        <path d="M6.5 10L8 11.5L11.5 8" stroke="rgba(255,255,255,0.92)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    MediSage
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#records">Your records</a>
+    <a href="#about">About</a>
+  </div>
+  <button class="nav-cta">Start Tracking</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-ring" style="width:500px;height:500px;"></div>
+  <div class="hero-ring" style="width:750px;height:750px;"></div>
+  <div class="hero-ring" style="width:1020px;height:1020px;"></div>
+  <div class="hero-ring" style="width:1300px;height:1300px;"></div>
+
+  <div class="hero-eyebrow">
+    <span class="pulse"></span>
+    Medical records · Simplified
+  </div>
+
+  <h1 class="hero-title">
+    Clarity and <em>control</em><br>for your family's health.
+  </h1>
+
+  <p class="hero-sub">
+    MediSage organises every test, diagnosis, and prescription into one place — and helps you understand what it all means, over a lifetime.
+  </p>
+
+  <button class="btn-primary">Start Tracking →</button>
+
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <span class="stat-num">5 min</span>
+      <span class="stat-lbl">To set up your family</span>
+    </div>
+    <div class="hero-stat">
+      <span class="stat-num">100%</span>
+      <span class="stat-lbl">Private &amp; encrypted</span>
+    </div>
+    <div class="hero-stat">
+      <span class="stat-num">60+</span>
+      <span class="stat-lbl">Biomarkers tracked</span>
+    </div>
+    <div class="hero-stat">
+      <span class="stat-num">∞</span>
+      <span class="stat-lbl">Years of history</span>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-section">
+  <div class="marquee-track">
+    <span class="marquee-item"><span class="marquee-dot"></span>Blood reports</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Prescriptions</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Radiology scans</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Doctor's notes</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Discharge summaries</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Vaccination records</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Surgical reports</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Lipid panels</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Thyroid tests</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>HbA1c trends</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Vitamin D levels</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>ECG reports</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Eye checkups</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Dental records</span>
+    <!-- dupe -->
+    <span class="marquee-item"><span class="marquee-dot"></span>Blood reports</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Prescriptions</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Radiology scans</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Doctor's notes</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Discharge summaries</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Vaccination records</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Surgical reports</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Lipid panels</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Thyroid tests</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>HbA1c trends</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Vitamin D levels</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>ECG reports</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Eye checkups</span>
+    <span class="marquee-item"><span class="marquee-dot"></span>Dental records</span>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how">
+  <div class="section-eyebrow reveal">How it works</div>
+  <div class="section-title reveal rd1">Three steps to a<br><em>lifetime</em> of clarity.</div>
+  <div class="steps">
+    <div class="step reveal">
+      <div class="step-num">01</div>
+      <div class="step-icon" style="background:var(--steel-pale);">
+        <svg viewBox="0 0 20 20" fill="none">
+          <rect x="4" y="3" width="12" height="14" rx="2.5" stroke="#5a90b8" stroke-width="1.2"/>
+          <line x1="7" y1="7.5" x2="13" y2="7.5" stroke="#5a90b8" stroke-width="1.1" stroke-linecap="round"/>
+          <line x1="7" y1="10.5" x2="13" y2="10.5" stroke="#5a90b8" stroke-width="1.1" stroke-linecap="round"/>
+          <line x1="7" y1="13.5" x2="10" y2="13.5" stroke="#5a90b8" stroke-width="1.1" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="step-title">Upload your records</div>
+      <div class="step-desc">Add any medical document — PDFs, photos of reports, prescriptions. MediSage reads and organises them automatically using AI.</div>
+    </div>
+    <div class="step reveal rd1">
+      <div class="step-num">02</div>
+      <div class="step-icon" style="background:#f0f8f3;">
+        <svg viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="10" r="6.5" stroke="#4a8a68" stroke-width="1.2"/>
+          <path d="M7.5 10L9.2 11.8L12.5 8.2" stroke="#4a8a68" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="step-title">We decode the jargon</div>
+      <div class="step-desc">Every report is translated into plain language — what each value means, whether it's in range, and what changed since your last test.</div>
+    </div>
+    <div class="step reveal rd2">
+      <div class="step-num">03</div>
+      <div class="step-icon" style="background:#fdf6ed;">
+        <svg viewBox="0 0 20 20" fill="none">
+          <polyline points="3,14 6.5,9 10,12 14,7 17,5" stroke="#a07830" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="17" cy="5" r="1.5" fill="#a07830"/>
+        </svg>
+      </div>
+      <div class="step-title">Track trends over time</div>
+      <div class="step-desc">See how every biomarker has moved across years — for you and every member of your family — in one continuous health timeline.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="section-eyebrow reveal">What you get</div>
+  <div class="section-title reveal rd1">Everything your family's<br>health deserves.</div>
+  <div class="features-grid">
+    <div class="feature-card reveal">
+      <div class="feature-icon" style="background:var(--steel-pale);">
+        <svg viewBox="0 0 19 19" fill="none">
+          <rect x="2" y="2" width="15" height="15" rx="3" stroke="#5a90b8" stroke-width="1.2"/>
+          <line x1="2" y1="7" x2="17" y2="7" stroke="#5a90b8" stroke-width="0.8"/>
+          <line x1="9.5" y1="7" x2="9.5" y2="17" stroke="#5a90b8" stroke-width="0.8"/>
+        </svg>
+      </div>
+      <div class="feature-title">Family health vault</div>
+      <div class="feature-desc">One account for your entire family. Each member gets their own timeline — parents, children, grandparents — all in one place.</div>
+    </div>
+    <div class="feature-card sage reveal rd1">
+      <div class="feature-icon" style="background:#f0f8f3;">
+        <svg viewBox="0 0 19 19" fill="none">
+          <circle cx="9.5" cy="9.5" r="6" stroke="#4a8a68" stroke-width="1.2"/>
+          <path d="M9.5 6.5V9.5L11.5 11.5" stroke="#4a8a68" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="feature-title">Biomarker timeline</div>
+      <div class="feature-desc">Glucose, cholesterol, thyroid — every tracked value shown over months and years so trends become unmissably visible.</div>
+    </div>
+    <div class="feature-card amber reveal">
+      <div class="feature-icon" style="background:#fdf6ed;">
+        <svg viewBox="0 0 19 19" fill="none">
+          <path d="M9.5 2.5L16 14.5H3L9.5 2.5Z" stroke="#a07830" stroke-width="1.2" stroke-linejoin="round"/>
+          <line x1="9.5" y1="7" x2="9.5" y2="10.5" stroke="#a07830" stroke-width="1.2" stroke-linecap="round"/>
+          <circle cx="9.5" cy="12.5" r="0.7" fill="#a07830"/>
+        </svg>
+      </div>
+      <div class="feature-title">Smart alerts</div>
+      <div class="feature-desc">Get notified when a value drifts outside the optimal range — or when a follow-up test is due based on your last report date.</div>
+    </div>
+    <div class="feature-card reveal rd1">
+      <div class="feature-icon" style="background:var(--steel-pale);">
+        <svg viewBox="0 0 19 19" fill="none">
+          <rect x="3" y="5" width="13" height="10" rx="2" stroke="#5a90b8" stroke-width="1.2"/>
+          <path d="M7 5V4C7 3 8 2 9.5 2C11 2 12 3 12 4V5" stroke="#5a90b8" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="3" y1="9" x2="16" y2="9" stroke="#5a90b8" stroke-width="0.8"/>
+          <rect x="6.5" y="11" width="2" height="2" rx="0.5" fill="#5a90b8"/>
+        </svg>
+      </div>
+      <div class="feature-title">Plain-language reports</div>
+      <div class="feature-desc">No more googling medical terms at midnight. Every report is decoded into what it actually means for your health, in simple words.</div>
+    </div>
+    <div class="feature-card wide reveal rd1">
+      <div class="feature-icon" style="background:#f0f8f3;">
+        <svg viewBox="0 0 22 22" fill="none">
+          <path d="M4 17C4 13.5 7 11 11 11C15 11 18 13.5 18 17" stroke="#4a8a68" stroke-width="1.2" stroke-linecap="round"/>
+          <circle cx="11" cy="6.5" r="3.5" stroke="#4a8a68" stroke-width="1.2"/>
+          <circle cx="17.5" cy="8" r="2.5" stroke="#4a8a68" stroke-width="1.1"/>
+          <circle cx="4.5" cy="8" r="2.5" stroke="#4a8a68" stroke-width="1.1"/>
+        </svg>
+      </div>
+      <div class="feature-content">
+        <div class="feature-title">Shared access for caregivers</div>
+        <div class="feature-desc">Grant a family doctor or specialist view-only access to a member's records — with one tap, no printing, no WhatsApp chaos. Your data stays yours, always.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RECORDS VISUAL -->
+<section class="records-section" id="records">
+  <div class="records-text">
+    <div class="section-eyebrow reveal">Your medical history</div>
+    <div class="section-title reveal rd1" style="margin-bottom:24px;">Every record.<br><em>Always there</em><br>when you need it.</div>
+    <p style="font-size:14.5px;color:var(--muted);font-weight:300;line-height:1.8;max-width:400px;" class="reveal rd2">
+      How many times have you scrambled to find an old report before a doctor's visit? Or forgotten what your cholesterol was two years ago? MediSage ends that forever — every document, searchable, readable, and understood.
+    </p>
+    <div style="margin-top:32px;" class="reveal rd2">
+      <button class="btn-primary">Start Tracking →</button>
+    </div>
+  </div>
+  <div class="records-visual reveal rd1">
+    <div class="record-stack">
+      <div class="record-item featured">
+        <div class="record-icon-wrap" style="background:var(--steel-pale);">
+          <svg viewBox="0 0 17 17" fill="none"><rect x="2" y="1.5" width="13" height="14" rx="2" stroke="#5a90b8" stroke-width="1.1"/><line x1="5" y1="6" x2="12" y2="6" stroke="#5a90b8" stroke-width="0.9" stroke-linecap="round"/><line x1="5" y1="8.5" x2="12" y2="8.5" stroke="#5a90b8" stroke-width="0.9" stroke-linecap="round"/><line x1="5" y1="11" x2="9" y2="11" stroke="#5a90b8" stroke-width="0.9" stroke-linecap="round"/></svg>
+        </div>
+        <div class="record-body">
+          <div class="record-title">Complete Blood Count</div>
+          <div class="record-meta">Dr. Anita Sharma · Fortis Hospital</div>
+        </div>
+        <span class="record-badge badge-new">New</span>
+      </div>
+      <div class="timeline-connector"></div>
+      <div class="record-item">
+        <div class="record-icon-wrap" style="background:#f0f8f3;">
+          <svg viewBox="0 0 17 17" fill="none"><path d="M8.5 2C8.5 2 4.5 5.5 4.5 9.5C4.5 11.8 6.3 13.5 8.5 13.5C10.7 13.5 12.5 11.8 12.5 9.5C12.5 5.5 8.5 2 8.5 2Z" stroke="#4a8a68" stroke-width="1.1"/></svg>
+        </div>
+        <div class="record-body">
+          <div class="record-title">Lipid Panel + HbA1c</div>
+          <div class="record-meta">Thyrocare · Home collection</div>
+        </div>
+        <span class="record-date">3 months ago</span>
+      </div>
+      <div class="timeline-connector"></div>
+      <div class="record-item">
+        <div class="record-icon-wrap" style="background:#fdf6ed;">
+          <svg viewBox="0 0 17 17" fill="none"><rect x="2" y="3.5" width="13" height="10" rx="2" stroke="#a07830" stroke-width="1.1"/><path d="M5.5 3.5V3C5.5 2.2 6.2 1.5 7 1.5H10C10.8 1.5 11.5 2.2 11.5 3V3.5" stroke="#a07830" stroke-width="1.1"/><line x1="2" y1="7.5" x2="15" y2="7.5" stroke="#a07830" stroke-width="0.8"/><rect x="5.5" y="9.5" width="2" height="2" rx="0.4" fill="#a07830"/></svg>
+        </div>
+        <div class="record-body">
+          <div class="record-title">Thyroid Function (TSH)</div>
+          <div class="record-meta">Metropolis · Prescription attached</div>
+        </div>
+        <span class="record-badge badge-old">6 mo ago</span>
+      </div>
+      <div class="timeline-connector"></div>
+      <div class="record-item">
+        <div class="record-icon-wrap" style="background:var(--steel-pale);">
+          <svg viewBox="0 0 17 17" fill="none"><polyline points="2,12 5,8 8,10 11,6 15,4" stroke="#5a90b8" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="record-body">
+          <div class="record-title">ECG + Cardiac Panel</div>
+          <div class="record-meta">Max Healthcare · Routine checkup</div>
+        </div>
+        <span class="record-date">1 year ago</span>
+      </div>
+      <div class="timeline-connector"></div>
+      <div class="record-item" style="opacity:0.55;">
+        <div class="record-icon-wrap" style="background:rgba(160,180,210,0.1);">
+          <svg viewBox="0 0 17 17" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="#aabbd0" stroke-width="1.1"/><line x1="8.5" y1="6" x2="8.5" y2="8.5" stroke="#aabbd0" stroke-width="1.1" stroke-linecap="round"/><circle cx="8.5" cy="10.5" r="0.7" fill="#aabbd0"/></svg>
+        </div>
+        <div class="record-body">
+          <div class="record-title">Annual physical + X-ray</div>
+          <div class="record-meta">Apollo Clinic</div>
+        </div>
+        <span class="record-date">2 years ago</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-ring" style="width:380px;height:380px;"></div>
+  <div class="cta-ring" style="width:620px;height:620px;"></div>
+  <div class="cta-ring" style="width:880px;height:880px;"></div>
+  <h2 class="cta-title reveal">Your family's health,<br><em>finally organised.</em></h2>
+  <p class="cta-sub reveal rd1">Start building your family health timeline today. Free to get started — no credit card needed.</p>
+  <div class="cta-btn-wrap reveal rd2">
+    <button class="btn-primary">Start Tracking →</button>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-top">
+    <div>
+      <div class="footer-logo">
+        <div class="nav-logo-mark">
+          <svg viewBox="0 0 17 17" fill="none">
+            <path d="M8.5 2.5C8.5 2.5 4 6 4 10.5C4 13.1 6.1 15 8.5 15C10.9 15 13 13.1 13 10.5C13 6 8.5 2.5 8.5 2.5Z" stroke="rgba(255,255,255,0.92)" stroke-width="1.2"/>
+            <path d="M6.5 10L8 11.5L11.5 8" stroke="rgba(255,255,255,0.92)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        MediSage
+      </div>
+      <div class="footer-tagline">Clarity and control for your family's health. Medical records, decoded and tracked for a lifetime.</div>
+    </div>
+    <div class="footer-links">
+      <div class="footer-col">
+        <div class="footer-col-title">Product</div>
+        <a href="#">How it works</a>
+        <a href="#">Features</a>
+        <a href="#">Pricing</a>
+        <a href="#">Download app</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Company</div>
+        <a href="#">About us</a>
+        <a href="#">Blog</a>
+        <a href="#">Careers</a>
+        <a href="#">Contact</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Legal</div>
+        <a href="#">Privacy policy</a>
+        <a href="#">Terms of use</a>
+        <a href="#">Data security</a>
+        <a href="#">DPDP compliance</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">© 2026 MediSage Technologies Pvt. Ltd. All rights reserved.</div>
+    <div class="footer-badge">
+      <span class="footer-badge-dot"></span>
+      AES-256 encrypted · DPDP compliant · Made in India
+    </div>
+  </div>
+</footer>
+
+<script>
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
