@@ -12,16 +12,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const googleSiteVerification =
-  process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+/** Google Search Console (OAuth / domain verification). Renders the standard meta tag on every page. */
+const GOOGLE_SITE_VERIFICATION = "p0MfWb8SIsg47-jGnXDlPBTR5Xk8RWt1aZrFb1BC7Is";
 
 export const metadata: Metadata = {
   title: "MediSage — Health data copilot",
   description:
     "MediSage is your private health document copilot: organize medical files in Google Drive and ask questions with AI grounded in your own documents.",
-  ...(googleSiteVerification
-    ? { verification: { google: googleSiteVerification } }
-    : {}),
+  verification: {
+    google: GOOGLE_SITE_VERIFICATION,
+  },
 };
 
 export default function RootLayout({

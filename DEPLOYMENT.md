@@ -109,7 +109,7 @@ Google checks that **you control** the **Application home page** URL on the OAut
    (same host and scheme as your live site).
 
 2. **Verify with the HTML tag method.**  
-   Search Console will show a `<meta name="google-site-verification" content="…" />` value. Put **only the `content` token** in Vercel (and local) env as **`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`**, redeploy, then click **Verify** in Search Console. This repo’s root `layout` emits that meta tag when the variable is set (see `.env.example`).
+   Search Console will show a `<meta name="google-site-verification" content="…" />` tag. The same verification value is embedded in **`src/app/layout.tsx`** (`GOOGLE_SITE_VERIFICATION`); Next.js emits the meta tag on every page. **Deploy** the latest `main` to Vercel, confirm View Source on the home page contains `google-site-verification`, then click **Verify** in Search Console. If you rotate the token in Search Console, update that constant and redeploy.
 
 3. **Align OAuth consent screen domains.**  
    Under **Authorized domains**, add **`medical-docs-web.vercel.app`** (no `https://`). **Application home page** should be `https://medical-docs-web.vercel.app` (or `/` if the form expects the site root—match what you verified). **Privacy policy** should be on the same host, e.g. `https://medical-docs-web.vercel.app/privacy`.
