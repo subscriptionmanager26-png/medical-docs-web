@@ -40,7 +40,7 @@ drop trigger if exists document_chunks_sync_user_id_trg on public.document_chunk
 create trigger document_chunks_sync_user_id_trg
   before insert or update on public.document_chunks
   for each row
-execute procedure public.document_chunks_sync_user_id();
+execute function public.document_chunks_sync_user_id();
 
 comment on table public.document_chunks is
 'pgvector chunks per upload; user_id must match parent documents.user_id (enforced by RLS + trigger). Vector search uses match_document_chunks() scoped to auth.uid().';

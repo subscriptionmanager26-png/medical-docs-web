@@ -5,9 +5,12 @@ This app is a **Next.js** site intended for **[Vercel](https://vercel.com)** (or
 ## 1. Supabase project
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. **SQL**: open **SQL Editor**, paste and run migrations in order (or use Supabase CLI):
-   - `supabase/migrations/20260419000000_init.sql`
-   - `supabase/migrations/20260420090000_vector_per_user_isolation.sql`
+2. **SQL**: open **SQL Editor** and run schema in order:
+   - **Easiest:** paste the single file `supabase/apply_full_schema.sql` from this repo (init + stricter search + trigger in one go).
+   - **Or** run the three files under `supabase/migrations/` in name order (`20260419…` then `20260419…` then `20260420…`).
+   - **If you only have GitHub:** raw files (replace `main` if your branch differs):  
+     `https://raw.githubusercontent.com/subscriptionmanager26-png/medical-docs-web/main/supabase/apply_full_schema.sql`  
+     or individual migrations under `.../main/supabase/migrations/`.
 3. **Authentication → URL configuration**
    - **Site URL**: your production URL, e.g. `https://your-app.vercel.app`.
    - **Redirect URLs**: add  
