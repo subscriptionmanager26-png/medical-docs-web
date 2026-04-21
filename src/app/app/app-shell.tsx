@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { VitalsTab } from "@/app/app/vitals-tab";
 import { DOCUMENT_CATEGORIES } from "@/lib/categories";
+import { VITALS_SUMMARY } from "@/lib/medisage/vitals-mock";
 import {
   type UploadStepId,
   type UploadStreamEvent,
@@ -25,7 +27,14 @@ type UploadOutcome =
   | { kind: "success"; text: string }
   | { kind: "error"; text: string };
 
-type TabId = "home" | "vault" | "ask" | "profile";
+type TabId = "home" | "vault" | "vitals" | "chat" | "services";
+
+type ChatThread = {
+  id: string;
+  title: string;
+  updated: string;
+  messages: ChatMsg[];
+};
 
 type Citation = {
   documentId: string;
@@ -96,6 +105,12 @@ const SMART_TAGS = [
   "#VisitNotes",
 ];
 
+const UPCOMING_ACTIONS: { id: string; label: string; due: string }[] = [
+  { id: "rx", label: "Refill prescription", due: "Tomorrow" },
+  { id: "lab", label: "Fasting lab work", due: "Nov 14" },
+  { id: "visit", label: "Annual physical", due: "Dec 2" },
+];
+
 function markFirstIncompleteAsError(
   steps: Record<UploadStepId, UploadStepUi>,
 ): Record<UploadStepId, UploadStepUi> {
@@ -162,7 +177,7 @@ function NavIconVault({ active }: { active: boolean }) {
   );
 }
 
-function NavIconAsk({ active }: { active: boolean }) {
+function NavIconChat({ active }: { active: boolean }) {
   return (
     <svg
       width="22"
@@ -183,7 +198,7 @@ function NavIconAsk({ active }: { active: boolean }) {
   );
 }
 
-function NavIconProfile({ active }: { active: boolean }) {
+function NavIconVitals({ active }: { active: boolean }) {
   return (
     <svg
       width="22"
@@ -193,13 +208,36 @@ function NavIconProfile({ active }: { active: boolean }) {
       className={active ? "text-medi-accent" : "text-medi-muted"}
       aria-hidden
     >
-      <circle cx="12" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.6" />
       <path
-        d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6"
+        d="M12 21a8 8 0 0 0 8-8c0-3-1.5-5.5-4-7l-4 11-4-11c-2.5 1.5-4 4-4 7a8 8 0 0 0 8 8Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 11v4"
         stroke="currentColor"
         strokeWidth="1.6"
         strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+function NavIconServices({ active }: { active: boolean }) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      className={active ? "text-medi-accent" : "text-medi-muted"}
+      aria-hidden
+    >
+      <rect x="4" y="4" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="14" y="4" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="4" y="14" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="14" y="14" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.6" />
     </svg>
   );
 }
@@ -220,10 +258,13 @@ export function AppShell() {
   const [userLabel, setUserLabel] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [chatQ, setChatQ] = useState("");
-  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  const [chats, setChats] = useState<ChatThread[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [chatting, setChatting] = useState(false);
   const [successHold, setSuccessHold] = useState(false);
-  const [vaultCategory, setVaultCategory] = useState<string | null>(null);
+  /** Vault folder drill-down (category name) */
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [upcomingDone, setUpcomingDone] = useState<Record<string, boolean>>({});
   const [indexedPreviewOpen, setIndexedPreviewOpen] = useState(false);
   const [indexedPreviewTitle, setIndexedPreviewTitle] = useState("");
   const [indexedPreviewLoading, setIndexedPreviewLoading] = useState(false);
@@ -299,7 +340,22 @@ export function AppShell() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages, chatting, activeTab]);
+  }, [chats, activeChatId, chatting, activeTab]);
+
+  function navToTab(next: TabId) {
+    if (next === "chat") setActiveChatId(null);
+    if (next === "vault") setActiveFolder(null);
+    setActiveTab(next);
+  }
+
+  function createNewChat() {
+    const id = `${Date.now()}`;
+    setChats((c) => [
+      { id, title: "New conversation", updated: "Just now", messages: [] },
+      ...c,
+    ]);
+    setActiveChatId(id);
+  }
 
   useEffect(() => {
     // `window.setTimeout` returns `number` in DOM types; Node's `setTimeout` is `Timeout` — use DOM handle for Next/Vercel build.
@@ -486,9 +542,24 @@ export function AppShell() {
 
   async function submitChat() {
     const q = chatQ.trim();
-    if (!q || chatting) return;
+    if (!q || chatting || !activeChatId) return;
+    const chatId = activeChatId;
     setChatQ("");
-    setChatMessages((m) => [...m, { role: "user", content: q }]);
+    setChats((cs) =>
+      cs.map((c) => {
+        if (c.id !== chatId) return c;
+        const nextTitle =
+          c.title === "New conversation"
+            ? `${q.slice(0, 38)}${q.length > 38 ? "…" : ""}`
+            : c.title;
+        return {
+          ...c,
+          title: nextTitle,
+          updated: "Just now",
+          messages: [...c.messages, { role: "user", content: q }],
+        };
+      }),
+    );
     setChatting(true);
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -507,14 +578,23 @@ export function AppShell() {
     };
     setChatting(false);
     if (!res.ok) {
-      setChatMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          content: data.error ?? "Chat failed.",
-          retrievalNote: null,
-        },
-      ]);
+      setChats((cs) =>
+        cs.map((c) =>
+          c.id === chatId
+            ? {
+                ...c,
+                messages: [
+                  ...c.messages,
+                  {
+                    role: "assistant",
+                    content: data.error ?? "Chat failed.",
+                    retrievalNote: null,
+                  } as ChatMsg,
+                ],
+              }
+            : c,
+        ),
+      );
       return;
     }
     const answer = data.answer ?? "No answer returned.";
@@ -530,15 +610,19 @@ export function AppShell() {
     } else if (typeof n === "number" && n === 0) {
       retrievalNote = "No indexed passages were found for your account.";
     }
-    setChatMessages((m) => [
-      ...m,
-      {
-        role: "assistant",
-        content: answer,
-        citations: Array.isArray(data.citations) ? data.citations : [],
-        retrievalNote,
-      },
-    ]);
+    const assistantMsg: ChatMsg = {
+      role: "assistant",
+      content: answer,
+      citations: Array.isArray(data.citations) ? data.citations : [],
+      retrievalNote,
+    };
+    setChats((cs) =>
+      cs.map((c) =>
+        c.id === chatId
+          ? { ...c, updated: "Just now", messages: [...c.messages, assistantMsg] }
+          : c,
+      ),
+    );
   }
 
   async function askChat(e: React.FormEvent) {
@@ -577,17 +661,18 @@ export function AppShell() {
     )
     .slice(0, 6);
 
-  const healthLine =
-    docs.length === 0
-      ? "Add a document"
-      : docs.length < 3
-        ? "Building profile"
-        : "All clear";
+  const showDrillHeader =
+    (activeTab === "vault" && activeFolder !== null) ||
+    (activeTab === "chat" && activeChatId !== null);
+  const drillTitle =
+    activeTab === "vault" && activeFolder
+      ? activeFolder
+      : activeChatId
+        ? (chats.find((c) => c.id === activeChatId)?.title ?? "Chat")
+        : "";
 
-  const healthSub =
-    docs.length === 0
-      ? "Upload labs or visit notes to unlock insights."
-      : "Your vault has indexed material ready for Copilot.";
+  const activeChatMessages =
+    chats.find((c) => c.id === activeChatId)?.messages ?? [];
 
   return (
     <div className="min-h-dvh bg-medi-canvas md:flex md:justify-center md:py-10 md:px-4">
@@ -641,14 +726,14 @@ export function AppShell() {
             )}
             <p className="mt-4 text-lg font-semibold tracking-tight">
               {phase === "done"
-                ? "Document indexed"
+                ? "Updated"
                 : phase === "error"
                   ? "Something went wrong"
                   : phase === "upload"
-                    ? "Uploading securely"
+                    ? "Uploading"
                     : phase === "analyze"
-                      ? "Copilot is analyzing"
-                      : "Structuring data"}
+                      ? "Extracting"
+                      : "Structuring"}
             </p>
             <p className="mt-2 max-w-[260px] text-sm text-white/80">
               {phase === "done"
@@ -662,103 +747,173 @@ export function AppShell() {
                   : phase === "upload"
                     ? "Your file is encrypted in transit and processed privately."
                     : phase === "analyze"
-                      ? "Extracting entities and medical context from your document."
+                      ? "Pulling text and medical context from your document."
                       : "Routing to the right folder and indexing for search."}
             </p>
           </div>
         ) : null}
 
-        <header className="sticky top-0 z-40 flex shrink-0 items-center justify-between gap-3 border-b border-medi-line bg-white/95 px-4 py-3 backdrop-blur-xl">
-          <div className="flex min-w-0 items-center gap-3">
-            <div
-              className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-medi-accent p-[2px] shadow-sm"
-              aria-hidden
-            >
-              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
-                {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={avatarUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
+        <header className="sticky top-0 z-40 flex shrink-0 items-center gap-2 border-b border-medi-line bg-white/95 px-3 py-3 backdrop-blur-xl">
+          {showDrillHeader ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeTab === "vault") setActiveFolder(null);
+                  if (activeTab === "chat") setActiveChatId(null);
+                }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-medi-line bg-medi-canvas text-medi-ink transition hover:bg-white active:scale-[0.98]"
+                aria-label="Back"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden
+                >
+                  <path
+                    d="M15 6l-6 6 6 6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
-                ) : (
-                  <span className="text-sm font-semibold text-medi-accent">
-                    {(userLabel || "M").slice(0, 1).toUpperCase()}
-                  </span>
-                )}
+                </svg>
+              </button>
+              <div className="min-w-0 flex-1 text-center">
+                <p className="truncate text-sm font-semibold text-medi-ink">
+                  {drillTitle}
+                </p>
               </div>
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold tracking-tight text-medi-ink">
-                MediSage
-              </p>
-              <p className="truncate text-xs text-medi-muted">
-                {userLabel || "Your health copilot"}
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2 rounded-full border border-medi-accent/25 bg-medi-accent/10 px-2.5 py-1 text-[10px] font-medium tracking-tight text-medi-accent">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-medi-accent/50 opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-medi-accent" />
-            </span>
-            Copilot active
-          </div>
+              <div className="h-10 w-10 shrink-0" aria-hidden />
+            </>
+          ) : (
+            <>
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div
+                  className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-medi-accent p-[2px] shadow-sm"
+                  aria-hidden
+                >
+                  <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={avatarUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-sm font-semibold text-medi-accent">
+                        {(userLabel || "M").slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold tracking-tight text-medi-ink">
+                    MediSage
+                  </p>
+                  <p className="truncate text-xs text-medi-muted">
+                    {userLabel || "Your health copilot"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 rounded-full border border-medi-accent/25 bg-medi-accent/10 px-2.5 py-1 text-[10px] font-medium tracking-tight text-medi-accent">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-medi-accent/50 opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-medi-accent" />
+                </span>
+                Copilot active
+              </div>
+            </>
+          )}
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto bg-white px-4 pb-28 pt-4 tracking-tight">
           {activeTab === "home" ? (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("ask")}
-                  className="relative col-span-2 overflow-hidden rounded-3xl bg-medi-ink p-5 text-left text-white shadow-medi-float ring-1 ring-medi-line transition active:scale-[0.99]"
-                >
-                  <span className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-medi-accent/35 blur-2xl" />
-                  <p className="text-xs font-semibold uppercase tracking-wide text-medi-accent">
-                    Ask your data
+                <div className="rounded-3xl border border-medi-line bg-medi-canvas p-4 shadow-medi-card">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-medi-muted">
+                    Optimal
                   </p>
-                  <p className="mt-2 text-xl font-semibold leading-snug">
-                    MediSage Copilot
+                  <p className="mt-2 text-3xl font-semibold tabular-nums text-medi-success">
+                    {VITALS_SUMMARY.normal}
                   </p>
-                  <p className="mt-2 text-sm text-white/75">
-                    Search across labs, scans, and notes—instant answers with
-                    citations.
+                  <p className="mt-1 text-xs text-medi-muted">vitals in range</p>
+                </div>
+                <div className="rounded-3xl border border-medi-line bg-medi-canvas p-4 shadow-medi-card">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-medi-muted">
+                    Attention
                   </p>
-                  <span className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-medi-accent px-3 py-1.5 text-xs font-medium text-white transition hover:bg-medi-accent-hover">
-                    Open chat
-                    <span aria-hidden>→</span>
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={openFilePicker}
-                  className="flex aspect-square flex-col justify-between rounded-3xl border border-medi-line bg-white p-4 text-left shadow-medi-card transition hover:border-medi-accent/30 active:scale-[0.98]"
-                >
-                  <span className="text-2xl" aria-hidden>
-                    ⬆️
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-medi-ink">Upload</p>
-                    <p className="mt-1 text-xs text-medi-muted">PDF or text</p>
-                  </div>
-                </button>
-
-                <div className="flex aspect-square flex-col justify-between rounded-3xl border border-medi-line bg-medi-canvas p-4 shadow-medi-card">
-                  <span className="text-2xl" aria-hidden>
-                    ✨
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-medi-ink">
-                      {healthLine}
-                    </p>
-                    <p className="mt-1 text-xs text-medi-muted">{healthSub}</p>
-                  </div>
+                  <p className="mt-2 text-3xl font-semibold tabular-nums text-medi-warning">
+                    {VITALS_SUMMARY.urgent + VITALS_SUMMARY.attention}
+                  </p>
+                  <p className="mt-1 text-xs text-medi-muted">review suggested</p>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={openFilePicker}
+                className="flex w-full items-center gap-4 rounded-3xl border border-medi-line bg-white p-4 text-left shadow-medi-card transition hover:border-medi-accent/30 active:scale-[0.98]"
+              >
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-medi-accent text-2xl text-white shadow-sm">
+                  ⬆️
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-medi-ink">Upload document</p>
+                  <p className="mt-0.5 text-xs text-medi-muted">
+                    PDF or text — sorted into your Drive vault
+                  </p>
+                </div>
+              </button>
+
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-medi-muted">
+                  Upcoming
+                </p>
+                <ul className="space-y-2">
+                  {UPCOMING_ACTIONS.map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center gap-3 rounded-2xl border border-medi-line bg-white px-3 py-3 shadow-medi-card"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setUpcomingDone((d) => ({ ...d, [a.id]: !d[a.id] }))
+                        }
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-medi-line bg-medi-canvas text-medi-accent transition active:scale-[0.96]"
+                        aria-label={upcomingDone[a.id] ? "Mark not done" : "Mark done"}
+                      >
+                        {upcomingDone[a.id] ? "✓" : ""}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={
+                            upcomingDone[a.id]
+                              ? "text-sm text-medi-muted line-through"
+                              : "text-sm font-medium text-medi-ink"
+                          }
+                        >
+                          {a.label}
+                        </p>
+                        <p className="text-xs text-medi-muted">{a.due}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navToTab("chat")}
+                className="w-full rounded-2xl border border-medi-accent/30 bg-medi-accent/10 py-3 text-sm font-semibold text-medi-accent transition hover:bg-medi-accent/15 active:scale-[0.98]"
+              >
+                Open AI chat
+              </button>
 
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-medi-muted">
@@ -770,10 +925,10 @@ export function AppShell() {
                       key={p.label}
                       type="button"
                       onClick={() => {
-                        setVaultCategory(p.category);
+                        setActiveFolder(p.category);
                         setActiveTab("vault");
                       }}
-                      className="shrink-0 rounded-full bg-medi-accent/10 px-4 py-2 text-xs font-semibold text-medi-ink ring-1 ring-medi-accent/20 transition hover:bg-medi-accent/15"
+                      className="shrink-0 rounded-full bg-medi-accent/10 px-4 py-2 text-xs font-semibold text-medi-ink ring-1 ring-medi-accent/20 transition hover:bg-medi-accent/15 active:scale-[0.98]"
                     >
                       {p.label}
                     </button>
@@ -830,248 +985,363 @@ export function AppShell() {
                   </ul>
                 )}
               </div>
-
             </div>
           ) : null}
 
           {activeTab === "vault" ? (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-medi-ink">Data vault</h2>
-                <p className="mt-1 text-sm text-medi-muted">
-                  Organized copies in your Drive, searchable here.
-                </p>
-              </div>
+              {!activeFolder ? (
+                <>
+                  <div>
+                    <h2 className="text-lg font-semibold text-medi-ink">Data vault</h2>
+                    <p className="mt-1 text-sm text-medi-muted">
+                      Organized copies in your Drive, searchable here.
+                    </p>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {DOCUMENT_CATEGORIES.map((cat) => {
-                  const count = docs.filter((d) => d.category === cat).length;
-                  const active = vaultCategory === cat;
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() =>
-                        setVaultCategory((c) => (c === cat ? null : cat))
-                      }
-                      className={
-                        active
-                          ? "rounded-3xl border-2 border-medi-accent bg-medi-accent/5 p-4 text-left shadow-medi-card"
-                          : "rounded-3xl border border-medi-line bg-white p-4 text-left shadow-medi-card"
-                      }
-                    >
-                      <p className="text-xs font-medium text-medi-muted">{cat}</p>
-                      <p className="mt-2 text-3xl font-semibold tabular-nums text-medi-ink">
-                        {count}
+                  <div className="grid grid-cols-2 gap-3">
+                    {DOCUMENT_CATEGORIES.map((cat) => {
+                      const count = docs.filter((d) => d.category === cat).length;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setActiveFolder(cat)}
+                          className="rounded-3xl border border-medi-line bg-white p-4 text-left shadow-medi-card transition hover:border-medi-accent/40 active:scale-[0.98]"
+                        >
+                          <p className="text-xs font-medium text-medi-muted">{cat}</p>
+                          <p className="mt-2 text-3xl font-semibold tabular-nums text-medi-ink">
+                            {count}
+                          </p>
+                          <p className="mt-1 text-[11px] text-medi-muted">documents</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-medi-muted">
+                      Smart tags
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {SMART_TAGS.map((t) => (
+                        <span
+                          key={t}
+                          className="rounded-full bg-medi-canvas px-3 py-1.5 text-xs font-medium text-medi-ink ring-1 ring-medi-line"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-medi-muted">
+                      Recent documents
+                    </p>
+                    {loading ? (
+                      <p className="text-sm text-medi-muted">Loading…</p>
+                    ) : recentDocs.length === 0 ? (
+                      <p className="rounded-2xl border border-dashed border-medi-line bg-medi-canvas px-4 py-6 text-center text-sm text-medi-muted">
+                        No documents yet. Upload from Home.
                       </p>
-                      <p className="mt-1 text-[11px] text-medi-muted">documents</p>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-medi-muted">
-                  Smart tags
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {SMART_TAGS.map((t) => (
-                    <span
-                      key={t}
-                      className="rounded-full bg-medi-canvas px-3 py-1.5 text-xs font-medium text-medi-ink ring-1 ring-medi-line"
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-medi-muted">
-                    {vaultCategory ? `${vaultCategory}` : "All documents"}
+                    ) : (
+                      <ul className="space-y-2">
+                        {recentDocs.map((d) => (
+                          <li
+                            key={d.id}
+                            className="flex items-center justify-between gap-3 rounded-2xl border border-medi-line bg-white px-3 py-3 shadow-medi-card"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-medi-ink">
+                                {d.title}
+                              </p>
+                              <p className="text-xs text-medi-muted">
+                                {d.category} ·{" "}
+                                {new Date(d.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 flex-col items-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => void openIndexedPreview(d.id, d.title)}
+                                className="text-xs font-semibold text-medi-muted hover:text-medi-accent"
+                              >
+                                Indexed text
+                              </button>
+                              <Link
+                                href={`/api/drive/download/${d.drive_file_id}`}
+                                className="text-xs font-semibold text-medi-accent hover:underline"
+                              >
+                                Download
+                              </Link>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-medi-muted">
+                    Files in this vault category (from your indexed library).
                   </p>
-                  {vaultCategory ? (
-                    <button
-                      type="button"
-                      className="text-xs font-semibold text-medi-accent"
-                      onClick={() => setVaultCategory(null)}
-                    >
-                      Clear filter
-                    </button>
-                  ) : null}
+                  {loading ? (
+                    <p className="text-sm text-medi-muted">Loading…</p>
+                  ) : docs.filter((d) => d.category === activeFolder).length === 0 ? (
+                    <p className="rounded-2xl border border-dashed border-medi-line bg-medi-canvas px-4 py-8 text-center text-sm text-medi-muted">
+                      No documents in this category yet.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {docs
+                        .filter((d) => d.category === activeFolder)
+                        .map((d) => (
+                          <li
+                            key={d.id}
+                            className="flex items-center justify-between gap-3 rounded-2xl border border-medi-line bg-white px-3 py-3 shadow-medi-card"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-medi-ink">
+                                {d.title}
+                              </p>
+                              <p className="text-xs text-medi-muted">
+                                {new Date(d.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 flex-col items-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => void openIndexedPreview(d.id, d.title)}
+                                className="text-xs font-semibold text-medi-muted hover:text-medi-accent"
+                              >
+                                Indexed text
+                              </button>
+                              <Link
+                                href={`/api/drive/download/${d.drive_file_id}`}
+                                className="text-xs font-semibold text-medi-accent hover:underline"
+                              >
+                                Download
+                              </Link>
+                            </div>
+                          </li>
+                        ))}
+                    </ul>
+                  )}
                 </div>
-                {loading ? (
-                  <p className="text-sm text-medi-muted">Loading…</p>
+              )}
+            </div>
+          ) : null}
+
+          {activeTab === "vitals" ? <VitalsTab /> : null}
+
+          {activeTab === "chat" ? (
+            !activeChatId ? (
+              <div className="space-y-4 pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg font-semibold text-medi-ink">AI chat</h2>
+                    <p className="mt-1 text-sm text-medi-muted">
+                      Conversations grounded in your uploads only.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={createNewChat}
+                  className="w-full rounded-2xl bg-medi-accent py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-medi-accent-hover active:scale-[0.98]"
+                >
+                  New conversation
+                </button>
+                {chats.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-medi-line bg-medi-canvas px-4 py-8 text-center text-sm text-medi-muted">
+                    No chats yet. Start a new conversation to ask about your indexed
+                    documents.
+                  </p>
                 ) : (
                   <ul className="space-y-2">
-                    {docs
-                      .filter((d) =>
-                        vaultCategory ? d.category === vaultCategory : true,
-                      )
-                      .map((d) => (
-                        <li
-                          key={d.id}
-                          className="flex items-center justify-between gap-3 rounded-2xl border border-medi-line bg-white px-3 py-3 shadow-medi-card"
+                    {chats.map((c) => (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveChatId(c.id)}
+                          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-medi-line bg-white px-4 py-3 text-left shadow-medi-card transition hover:border-medi-accent/30 active:scale-[0.98]"
                         >
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-medi-ink">
-                              {d.title}
+                              {c.title}
                             </p>
                             <p className="text-xs text-medi-muted">
-                              {d.category} ·{" "}
-                              {new Date(d.created_at).toLocaleDateString()}
+                              {c.messages.length} message
+                              {c.messages.length === 1 ? "" : "s"} · {c.updated}
                             </p>
                           </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1">
-                            <button
-                              type="button"
-                              onClick={() => void openIndexedPreview(d.id, d.title)}
-                              className="text-xs font-semibold text-medi-muted hover:text-medi-accent"
-                            >
-                              Indexed text
-                            </button>
-                            <Link
-                              href={`/api/drive/download/${d.drive_file_id}`}
-                              className="text-xs font-semibold text-medi-accent hover:underline"
-                            >
-                              Download
-                            </Link>
-                          </div>
-                        </li>
-                      ))}
+                          <span className="text-medi-muted" aria-hidden>
+                            →
+                          </span>
+                        </button>
+                      </li>
+                    ))}
                   </ul>
                 )}
               </div>
-            </div>
-          ) : null}
-
-          {activeTab === "ask" ? (
-            <div className="flex min-h-[calc(100dvh-220px)] flex-col">
-              <div className="mb-3 flex items-center justify-between rounded-2xl border border-medi-line bg-medi-canvas px-3 py-2.5 shadow-medi-card">
-                <div>
-                  <p className="text-sm font-semibold text-medi-ink">
-                    MediSage Copilot
-                  </p>
-                  <p className="text-xs text-medi-muted">Answers from your uploads only</p>
-                </div>
-                <span className="flex items-center gap-1.5 rounded-full bg-medi-success/15 px-2 py-1 text-[10px] font-semibold text-medi-success ring-1 ring-medi-success/25">
-                  <span className="h-1.5 w-1.5 rounded-full bg-medi-success" />
-                  Online
-                </span>
-              </div>
-
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-                {chatMessages.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-medi-line bg-medi-canvas px-4 py-6 text-center text-sm text-medi-muted">
-                    Ask anything about the text we indexed from your documents.
-                    Not medical advice.
-                  </p>
-                ) : (
-                  chatMessages.map((msg, i) =>
-                    msg.role === "user" ? (
-                      <div
-                        key={i}
-                        className="ml-6 rounded-2xl bg-medi-ink px-4 py-3 text-sm leading-relaxed text-white shadow-md"
-                      >
-                        {msg.content}
-                      </div>
-                    ) : (
-                      <div
-                        key={i}
-                        className="mr-4 rounded-2xl border border-medi-line bg-white px-4 py-3 text-sm leading-relaxed text-medi-ink shadow-medi-card"
-                      >
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                        {msg.citations && msg.citations.length > 0 ? (
-                          <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-                            {msg.citations.map((c) => (
-                              <span
-                                key={c.documentId}
-                                className="inline-flex max-w-full flex-wrap items-center gap-1"
-                              >
-                                <Link
-                                  href={`/api/drive/download/${c.driveFileId}`}
-                                  className="inline-flex max-w-[200px] items-center rounded-full bg-medi-accent/10 px-3 py-1 text-xs font-semibold text-medi-accent ring-1 ring-medi-accent/25 hover:bg-medi-accent/15"
-                                >
-                                  <span className="truncate">{c.title}</span>
-                                </Link>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    void openIndexedPreview(c.documentId, c.title)
-                                  }
-                                  className="rounded-full bg-medi-canvas px-2 py-1 text-[10px] font-semibold text-medi-ink ring-1 ring-medi-line hover:bg-medi-line/50"
-                                >
-                                  Indexed
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                        {msg.retrievalNote ? (
-                          <p className="mt-2 text-[11px] text-medi-muted">
-                            {msg.retrievalNote}
-                          </p>
-                        ) : null}
-                      </div>
-                    ),
-                  )
-                )}
-                {chatting ? (
-                  <div className="mr-4 inline-flex items-center gap-2 rounded-2xl border border-medi-line bg-white px-3 py-2 text-xs text-medi-muted">
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-medi-accent border-t-transparent" />
-                    Thinking…
+            ) : (
+              <div className="flex min-h-[calc(100dvh-220px)] flex-col">
+                <div className="mb-3 flex items-center justify-between rounded-2xl border border-medi-line bg-medi-canvas px-3 py-2.5 shadow-medi-card">
+                  <div>
+                    <p className="text-sm font-semibold text-medi-ink">
+                      MediSage Copilot
+                    </p>
+                    <p className="text-xs text-medi-muted">
+                      Answers from your uploads only
+                    </p>
                   </div>
-                ) : null}
-                <div ref={chatEndRef} />
-              </div>
-
-              <div className="sticky bottom-0 mt-4 space-y-2 bg-gradient-to-t from-white via-white to-transparent pb-1 pt-3">
-                <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {PROMPT_CHIPS.map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      disabled={chatting}
-                      onClick={() => setChatQ(chip)}
-                      className="shrink-0 rounded-full border border-medi-accent/25 bg-white px-3 py-1.5 text-[11px] font-medium text-medi-ink shadow-sm transition hover:border-medi-accent/40 disabled:opacity-50"
-                    >
-                      {chip}
-                    </button>
-                  ))}
+                  <span className="flex items-center gap-1.5 rounded-full bg-medi-success/15 px-2 py-1 text-[10px] font-semibold text-medi-success ring-1 ring-medi-success/25">
+                    <span className="h-1.5 w-1.5 rounded-full bg-medi-success" />
+                    Online
+                  </span>
                 </div>
-                <form
-                  onSubmit={(e) => void askChat(e)}
-                  className="flex items-end gap-2 rounded-full border border-medi-line bg-white px-3 py-2 shadow-medi-float ring-1 ring-medi-accent/10 backdrop-blur-md"
-                >
-                  <textarea
-                    value={chatQ}
-                    onChange={(e) => setChatQ(e.target.value)}
-                    rows={1}
-                    placeholder="Ask about your documents…"
-                    className="max-h-28 min-h-[40px] flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-medi-ink outline-none placeholder:text-medi-muted"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        void submitChat();
-                      }
-                    }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={chatting || !chatQ.trim()}
-                    className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-medi-accent text-lg font-semibold text-white shadow-lg shadow-medi-accent/30 transition hover:bg-medi-accent-hover active:scale-[0.98] disabled:opacity-40"
-                    aria-label="Send"
+
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+                  {activeChatMessages.length === 0 ? (
+                    <p className="rounded-2xl border border-dashed border-medi-line bg-medi-canvas px-4 py-6 text-center text-sm text-medi-muted">
+                      Ask anything about the text we indexed from your documents. Not
+                      medical advice.
+                    </p>
+                  ) : (
+                    activeChatMessages.map((msg, i) =>
+                      msg.role === "user" ? (
+                        <div
+                          key={i}
+                          className="ml-4 rounded-2xl bg-medi-accent px-4 py-3 text-sm leading-relaxed text-white shadow-md"
+                        >
+                          {msg.content}
+                        </div>
+                      ) : (
+                        <div
+                          key={i}
+                          className="mr-4 rounded-2xl border border-medi-line bg-white px-4 py-3 text-sm leading-relaxed text-medi-ink shadow-medi-card"
+                        >
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          {msg.citations && msg.citations.length > 0 ? (
+                            <div className="mt-3 flex flex-wrap gap-2 border-t border-medi-line pt-3">
+                              {msg.citations.map((c) => (
+                                <span
+                                  key={c.documentId}
+                                  className="inline-flex max-w-full flex-wrap items-center gap-1"
+                                >
+                                  <Link
+                                    href={`/api/drive/download/${c.driveFileId}`}
+                                    className="inline-flex max-w-[200px] items-center rounded-full bg-medi-accent/10 px-3 py-1 text-xs font-semibold text-medi-accent ring-1 ring-medi-accent/25 hover:bg-medi-accent/15"
+                                  >
+                                    <span className="truncate">{c.title}</span>
+                                  </Link>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      void openIndexedPreview(c.documentId, c.title)
+                                    }
+                                    className="rounded-full bg-medi-canvas px-2 py-1 text-[10px] font-semibold text-medi-ink ring-1 ring-medi-line hover:bg-medi-line/50"
+                                  >
+                                    Indexed
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                          {msg.retrievalNote ? (
+                            <p className="mt-2 text-[11px] text-medi-muted">
+                              {msg.retrievalNote}
+                            </p>
+                          ) : null}
+                        </div>
+                      ),
+                    )
+                  )}
+                  {chatting ? (
+                    <div className="mr-4 inline-flex items-center gap-2 rounded-2xl border border-medi-line bg-white px-3 py-2 text-xs text-medi-muted">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-medi-accent border-t-transparent" />
+                      Thinking…
+                    </div>
+                  ) : null}
+                  <div ref={chatEndRef} />
+                </div>
+
+                <div className="sticky bottom-0 mt-4 space-y-2 bg-gradient-to-t from-white via-white to-transparent pb-1 pt-3">
+                  <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {PROMPT_CHIPS.map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        disabled={chatting}
+                        onClick={() => setChatQ(chip)}
+                        className="shrink-0 rounded-full border border-medi-accent/25 bg-white px-3 py-1.5 text-[11px] font-medium text-medi-ink shadow-sm transition hover:border-medi-accent/40 disabled:opacity-50"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                  <form
+                    onSubmit={(e) => void askChat(e)}
+                    className="flex items-end gap-2 rounded-full border border-medi-line bg-white px-3 py-2 shadow-medi-float ring-1 ring-medi-accent/10 backdrop-blur-md"
                   >
-                    ↑
-                  </button>
-                </form>
+                    <textarea
+                      value={chatQ}
+                      onChange={(e) => setChatQ(e.target.value)}
+                      rows={1}
+                      placeholder="Ask about your documents…"
+                      className="max-h-28 min-h-[40px] flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-medi-ink outline-none placeholder:text-medi-muted"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void submitChat();
+                        }
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={chatting || !chatQ.trim()}
+                      className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-medi-accent text-lg font-semibold text-white shadow-lg shadow-medi-accent/30 transition hover:bg-medi-accent-hover active:scale-[0.98] disabled:opacity-40"
+                      aria-label="Send"
+                    >
+                      ↑
+                    </button>
+                  </form>
+                </div>
               </div>
-            </div>
+            )
           ) : null}
 
-          {activeTab === "profile" ? (
-            <div className="space-y-4">
+          {activeTab === "services" ? (
+            <div className="space-y-3 pb-2">
+              <div>
+                <h2 className="text-lg font-semibold text-medi-ink">Services</h2>
+                <p className="mt-1 text-sm text-medi-muted">
+                  Quick links for care logistics (placeholders — wire to your providers).
+                </p>
+              </div>
+              <button
+                type="button"
+                className="w-full rounded-2xl border border-medi-line bg-white px-4 py-3.5 text-left text-sm font-semibold text-medi-ink shadow-medi-card transition hover:bg-medi-canvas active:scale-[0.98]"
+              >
+                Book lab test
+              </button>
+              <button
+                type="button"
+                className="w-full rounded-2xl border border-medi-line bg-white px-4 py-3.5 text-left text-sm font-semibold text-medi-ink shadow-medi-card transition hover:bg-medi-canvas active:scale-[0.98]"
+              >
+                Order medicine
+              </button>
+              <button
+                type="button"
+                className="w-full rounded-2xl border border-medi-line bg-white px-4 py-3.5 text-left text-sm font-semibold text-medi-ink shadow-medi-card transition hover:bg-medi-canvas active:scale-[0.98]"
+              >
+                Consult doctor
+              </button>
+
+              <div className="my-4 border-t border-medi-line" />
+
               <div className="rounded-3xl border border-medi-line bg-medi-canvas p-5 shadow-medi-card">
                 <p className="text-sm font-semibold text-medi-ink">Account</p>
                 <p className="mt-1 text-sm text-medi-muted">{userLabel || "—"}</p>
@@ -1212,31 +1482,32 @@ export function AppShell() {
           className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-5 md:left-1/2 md:right-auto md:w-[400px] md:-translate-x-1/2"
           aria-label="Primary"
         >
-          <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-medi-line bg-white px-4 py-2 shadow-medi-float backdrop-blur-xl">
+          <div className="pointer-events-auto flex max-w-full items-center gap-0.5 rounded-full border border-medi-line bg-white px-2 py-1.5 shadow-medi-float backdrop-blur-xl">
             {(
               [
-                { id: "home" as const, Icon: NavIconHome },
-                { id: "vault" as const, Icon: NavIconVault },
-                { id: "ask" as const, Icon: NavIconAsk },
-                { id: "profile" as const, Icon: NavIconProfile },
+                { id: "home" as const, Icon: NavIconHome, label: "Home" },
+                { id: "vault" as const, Icon: NavIconVault, label: "Vault" },
+                { id: "vitals" as const, Icon: NavIconVitals, label: "Vitals" },
+                { id: "chat" as const, Icon: NavIconChat, label: "AI chat" },
+                { id: "services" as const, Icon: NavIconServices, label: "Services" },
               ] as const
-            ).map(({ id, Icon }) => {
+            ).map(({ id, Icon, label }) => {
               const active = activeTab === id;
               return (
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setActiveTab(id)}
+                  onClick={() => navToTab(id)}
                   className={
                     active
-                      ? "relative flex h-11 w-11 items-center justify-center rounded-full bg-medi-accent/10 transition"
-                      : "relative flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-medi-canvas"
+                      ? "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-medi-accent/10 transition"
+                      : "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-medi-canvas"
                   }
-                  aria-label={id}
+                  aria-label={label}
                 >
                   <Icon active={active} />
                   {active ? (
-                    <span className="absolute bottom-1.5 h-1 w-3 rounded-full bg-medi-accent" />
+                    <span className="absolute bottom-1 h-0.5 w-5 rounded-full bg-medi-accent" />
                   ) : null}
                 </button>
               );
