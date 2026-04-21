@@ -14,8 +14,8 @@ import type { UploadStreamEvent } from "@/lib/upload-stream-protocol";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/** Increase on Vercel Pro / Fluid if large PDFs + embeddings exceed this. */
-export const maxDuration = 120;
+/** OpenAI file parse + embeddings + Drive can exceed 120s on large PDFs. */
+export const maxDuration = 300;
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
 
     const [text, structure] = await Promise.all([
       withTimeout(
-        extractTextFromBuffer(mimeType, buffer),
-        60_000,
+        extractTextFromBuffer(mimeType, buffer, { fileName: file.name }),
+        180_000,
         "Text extraction",
       ).catch(() => ""),
       ensureDriveStructure(cred.refresh_token, roots),
