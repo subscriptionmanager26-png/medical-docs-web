@@ -1,8 +1,35 @@
 import { Readable } from "stream";
 import { google } from "googleapis";
+import type { drive_v3 } from "googleapis";
 import { DOCUMENT_CATEGORIES } from "@/lib/categories";
 
 const ROOT_FOLDER_NAME = "Medical Docs (Vault)";
+
+type GoogleApiErrorBody = {
+  error?: {
+    message?: string;
+    errors?: Array<{ reason?: string; message?: string; domain?: string }>;
+  };
+};
+
+/** Best-effort message for Drive API failures (403, 404, quota, etc.). */
+export function formatGoogleDriveError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const ax = err as Error & {
+    response?: { status?: number; data?: GoogleApiErrorBody };
+  };
+  const status = ax.response?.status;
+  const apiErr = ax.response?.data?.error;
+  const parts: string[] = [];
+  if (typeof status === "number") parts.push(`HTTP ${status}`);
+  if (apiErr?.message) parts.push(apiErr.message);
+  const reasons = apiErr?.errors
+    ?.map((e) => e.reason || e.message)
+    .filter(Boolean);
+  if (reasons?.length) parts.push(`[${reasons.join(", ")}]`);
+  if (parts.length > 0) return parts.join(" — ");
+  return err.message;
+}
 
 export function getDriveClient(refreshToken: string) {
   const oauth2 = new google.auth.OAuth2(
@@ -12,6 +39,22 @@ export function getDriveClient(refreshToken: string) {
   );
   oauth2.setCredentials({ refresh_token: refreshToken });
   return google.drive({ version: "v3", auth: oauth2 });
+}
+
+async function driveFileExists(
+  drive: drive_v3.Drive,
+  fileId: string,
+): Promise<boolean> {
+  try {
+    await drive.files.get({
+      fileId,
+      fields: "id",
+      supportsAllDrives: true,
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function ensureDriveStructure(
@@ -27,6 +70,13 @@ export async function ensureDriveStructure(
     ...(existing?.category_folder_ids ?? {}),
   };
 
+  if (rootId && !(await driveFileExists(drive, rootId))) {
+    rootId = undefined;
+    for (const k of Object.keys(categoryIds)) {
+      delete categoryIds[k];
+    }
+  }
+
   if (!rootId) {
     const created = await drive.files.create({
       requestBody: {
@@ -34,12 +84,19 @@ export async function ensureDriveStructure(
         mimeType: "application/vnd.google-apps.folder",
       },
       fields: "id",
+      supportsAllDrives: true,
     });
     rootId = created.data.id!;
   }
 
   for (const cat of DOCUMENT_CATEGORIES) {
-    if (categoryIds[cat]) continue;
+    const existingCatId = categoryIds[cat];
+    if (existingCatId && (await driveFileExists(drive, existingCatId))) {
+      continue;
+    }
+    if (existingCatId) {
+      delete categoryIds[cat];
+    }
     const sub = await drive.files.create({
       requestBody: {
         name: cat,
@@ -47,6 +104,7 @@ export async function ensureDriveStructure(
         parents: [rootId],
       },
       fields: "id",
+      supportsAllDrives: true,
     });
     categoryIds[cat] = sub.data.id!;
   }
@@ -72,6 +130,7 @@ export async function uploadToDriveFolder(params: {
       body: Readable.from(params.buffer),
     },
     fields: "id",
+    supportsAllDrives: true,
   });
   return created.data.id!;
 }

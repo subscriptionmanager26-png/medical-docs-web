@@ -7,7 +7,11 @@ import {
   extractTextFromBuffer,
   prepareTextForVectorIndexing,
 } from "@/lib/document-processing";
-import { ensureDriveStructure, uploadToDriveFolder } from "@/lib/google-drive";
+import {
+  ensureDriveStructure,
+  formatGoogleDriveError,
+  uploadToDriveFolder,
+} from "@/lib/google-drive";
 import type { DocumentCategory } from "@/lib/categories";
 import { withTimeout } from "@/lib/with-timeout";
 import type { UploadStreamEvent } from "@/lib/upload-stream-protocol";
@@ -231,9 +235,21 @@ export async function POST(request: NextRequest) {
       },
     );
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Upload failed unexpectedly.";
-    push({ type: "result", ok: false, error: message });
+    const message = formatGoogleDriveError(err);
+    console.error("[upload] failed", {
+      userId: user.id,
+      message,
+      google: (err as { response?: { status?: number; data?: unknown } })
+        ?.response?.data,
+    });
+    push({
+      type: "result",
+      ok: false,
+      error:
+        message.includes("403") || message.toLowerCase().includes("forbidden")
+          ? `${message} If this persists, open Profile → “Prepare Google Drive folders” to refresh vault folders, or sign out and sign in with Google again (Drive access).`
+          : message,
+    });
     return NextResponse.json({ events }, { status: 500 });
   }
 }

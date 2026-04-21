@@ -68,6 +68,19 @@ After deploy, update Supabase **Site URL** and **Redirect URLs** to match the li
 
 If Drive operations fail, sign out and sign in again with **Continue** on Google’s consent so a refresh token is issued.
 
+### Drive upload returns 500 / Google `files` → 403
+
+Vercel logs often show **`POST oauth2.googleapis.com/token` → 200** (refresh works) but **`POST drive/v3/files` → 403**. That means **Google denied creating the file in the parent folder**, not that Supabase auth failed.
+
+Typical causes:
+
+1. **Stale vault folder IDs** — We store `drive_roots` (root + category folder IDs) in Postgres. If the user **deleted or moved** those folders in Drive, the app still trusted the old IDs until the next successful folder repair. **Fix:** open **Profile → “Prepare Google Drive folders”** once (or upload again after deploy): the server now **re-checks** that stored folder IDs still exist in Drive and **recreates** the vault tree when they do not.
+2. **OAuth consent / `drive.file` scope** — The app needs **`https://www.googleapis.com/auth/drive.file`**. If that user never completed consent (or used an old login without Drive), uploads can fail. **Fix:** sign out, sign in with **Continue** on Google’s Drive permission screen.
+3. **Google Workspace policy** — An admin can block third-party Drive access or restrict creating files; that surfaces as **403** from the Drive API.
+4. **OAuth app in “Testing”** — Only **test users** listed on the consent screen get full access; others may hit odd failures. Add the user as a test user or publish the app.
+
+Server logs now include **`[upload] failed`** with the Google error body to distinguish these cases.
+
 ## 5. Security and compliance
 
 Medical data is sensitive. Before production use: threat model, encryption review, retention/deletion policy, and (if applicable) HIPAA/GDPR and a **Business Associate Agreement** with your vendors.
