@@ -64,6 +64,7 @@ After deploy, update Supabase **Site URL** and **Redirect URLs** to match the li
 - **Logical isolation:** every chunk row has `user_id`. **Row Level Security** on `document_chunks` and `documents` ensures users only read/write their own rows. **`match_document_chunks`** only returns rows where `user_id = auth.uid()`.
 - **Extra safety:** migration `20260420090000_vector_per_user_isolation.sql` adds a **trigger** so `document_chunks.user_id` always matches the parent `documents.user_id`, and inserts fail if the document is not visible to the current user (prevents cross-tenant `document_id` misuse).
 - **Retrieval:** `POST /api/chat` uses merged semantic search. **`GET /api/documents/search?q=...&limit=20`** returns ranked snippets + document metadata for the signed-in user only (same RPC + RLS).
+- **Inspect indexed text:** `GET /api/documents/{documentId}/indexed-text` (authenticated) returns the chunk text stored in Supabase for that document—use the **Indexed text** control in the app, or call the API directly when debugging extraction.
 
 If Drive operations fail, sign out and sign in again with **Continue** on Google’s consent so a refresh token is issued.
 

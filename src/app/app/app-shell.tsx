@@ -43,6 +43,30 @@ type ChatMsg =
       retrievalNote?: string | null;
     };
 
+type IndexedTextApiResponse = {
+  document: {
+    id: string;
+    title: string;
+    category: string;
+    mime_type: string | null;
+    created_at: string;
+  };
+  chunks: Array<{
+    chunkIndex: number;
+    charCount: number;
+    truncated: boolean;
+    content: string;
+  }>;
+  summary: {
+    totalChunks: number;
+    totalChunksInDatabase: number;
+    previewLimitedToChunks: number | null;
+    totalChars: number;
+    looksLikePlaceholderNotice: boolean;
+    truncatedChunkCount: number;
+  };
+};
+
 const INITIAL_UPLOAD_STEPS: Record<UploadStepId, UploadStepUi> = {
   reading: "pending",
   folder: "pending",
@@ -201,6 +225,14 @@ export function AppShell() {
   const [chatting, setChatting] = useState(false);
   const [successHold, setSuccessHold] = useState(false);
   const [vaultCategory, setVaultCategory] = useState<string | null>(null);
+  const [indexedPreviewOpen, setIndexedPreviewOpen] = useState(false);
+  const [indexedPreviewTitle, setIndexedPreviewTitle] = useState("");
+  const [indexedPreviewLoading, setIndexedPreviewLoading] = useState(false);
+  const [indexedPreviewData, setIndexedPreviewData] =
+    useState<IndexedTextApiResponse | null>(null);
+  const [indexedPreviewError, setIndexedPreviewError] = useState<string | null>(
+    null,
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -212,6 +244,35 @@ export function AppShell() {
       setDocs(data.documents ?? []);
     }
   }, []);
+
+  function closeIndexedPreview () {
+    setIndexedPreviewOpen(false);
+    setIndexedPreviewTitle("");
+    setIndexedPreviewLoading(false);
+    setIndexedPreviewData(null);
+    setIndexedPreviewError(null);
+  }
+
+  async function openIndexedPreview (docId: string, title: string) {
+    setIndexedPreviewOpen(true);
+    setIndexedPreviewTitle(title);
+    setIndexedPreviewLoading(true);
+    setIndexedPreviewData(null);
+    setIndexedPreviewError(null);
+    try {
+      const res = await fetch(`/api/documents/${docId}/indexed-text`);
+      const data = (await res.json()) as IndexedTextApiResponse & { error?: string };
+      if (!res.ok) {
+        setIndexedPreviewError(data.error ?? `Could not load (HTTP ${res.status})`);
+        return;
+      }
+      setIndexedPreviewData(data);
+    } catch {
+      setIndexedPreviewError("Network error while loading indexed text.");
+    } finally {
+      setIndexedPreviewLoading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -748,12 +809,21 @@ export function AppShell() {
                             <span className="text-violet-700">{d.category}</span>
                           </p>
                         </div>
-                        <Link
-                          href={`/api/drive/download/${d.drive_file_id}`}
-                          className="shrink-0 text-xs font-semibold text-violet-700 hover:underline"
-                        >
-                          Open
-                        </Link>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => void openIndexedPreview(d.id, d.title)}
+                            className="text-xs font-semibold text-gray-600 hover:text-violet-800"
+                          >
+                            Indexed text
+                          </button>
+                          <Link
+                            href={`/api/drive/download/${d.drive_file_id}`}
+                            className="text-xs font-semibold text-violet-700 hover:underline"
+                          >
+                            Open file
+                          </Link>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -852,12 +922,21 @@ export function AppShell() {
                               {new Date(d.created_at).toLocaleDateString()}
                             </p>
                           </div>
-                          <Link
-                            href={`/api/drive/download/${d.drive_file_id}`}
-                            className="shrink-0 text-xs font-semibold text-violet-700 hover:underline"
-                          >
-                            Download
-                          </Link>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void openIndexedPreview(d.id, d.title)}
+                              className="text-xs font-semibold text-gray-600 hover:text-violet-800"
+                            >
+                              Indexed text
+                            </button>
+                            <Link
+                              href={`/api/drive/download/${d.drive_file_id}`}
+                              className="text-xs font-semibold text-violet-700 hover:underline"
+                            >
+                              Download
+                            </Link>
+                          </div>
                         </li>
                       ))}
                   </ul>
@@ -905,13 +984,26 @@ export function AppShell() {
                         {msg.citations && msg.citations.length > 0 ? (
                           <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
                             {msg.citations.map((c) => (
-                              <Link
+                              <span
                                 key={c.documentId}
-                                href={`/api/drive/download/${c.driveFileId}`}
-                                className="inline-flex max-w-full items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-800 ring-1 ring-violet-200/70 hover:bg-violet-100"
+                                className="inline-flex max-w-full flex-wrap items-center gap-1"
                               >
-                                <span className="truncate">{c.title}</span>
-                              </Link>
+                                <Link
+                                  href={`/api/drive/download/${c.driveFileId}`}
+                                  className="inline-flex max-w-[200px] items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-800 ring-1 ring-violet-200/70 hover:bg-violet-100"
+                                >
+                                  <span className="truncate">{c.title}</span>
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void openIndexedPreview(c.documentId, c.title)
+                                  }
+                                  className="rounded-full bg-gray-100 px-2 py-1 text-[10px] font-semibold text-gray-700 ring-1 ring-gray-200 hover:bg-gray-200"
+                                >
+                                  Indexed
+                                </button>
+                              </span>
                             ))}
                           </div>
                         ) : null}
@@ -1009,6 +1101,111 @@ export function AppShell() {
             </div>
           ) : null}
         </main>
+
+        {indexedPreviewOpen ? (
+          <div
+            className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 p-4 pb-28 backdrop-blur-sm md:items-center md:pb-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="indexed-preview-title"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeIndexedPreview();
+            }}
+          >
+            <div
+              className="flex max-h-[min(85dvh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-gray-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-2 border-b border-gray-100 px-4 py-3">
+                <div className="min-w-0">
+                  <p
+                    id="indexed-preview-title"
+                    className="truncate text-sm font-semibold text-gray-900"
+                  >
+                    Indexed text
+                  </p>
+                  <p className="truncate text-xs text-gray-500">{indexedPreviewTitle}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeIndexedPreview}
+                  className="shrink-0 rounded-full px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+                {indexedPreviewLoading ? (
+                  <p className="text-sm text-gray-500">Loading chunks from your vault…</p>
+                ) : indexedPreviewError ? (
+                  <p className="text-sm text-red-700">{indexedPreviewError}</p>
+                ) : indexedPreviewData ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-600">
+                      <span className="font-semibold text-gray-800">
+                        {indexedPreviewData.summary.totalChunksInDatabase.toLocaleString()}
+                      </span>{" "}
+                      chunk
+                      {indexedPreviewData.summary.totalChunksInDatabase === 1
+                        ? ""
+                        : "s"}{" "}
+                      in the database
+                      {indexedPreviewData.summary.previewLimitedToChunks != null ? (
+                        <span className="text-gray-500">
+                          {" "}
+                          (showing first{" "}
+                          {indexedPreviewData.summary.previewLimitedToChunks} in this
+                          preview)
+                        </span>
+                      ) : null}
+                      ,{" "}
+                      <span className="font-semibold text-gray-800">
+                        {indexedPreviewData.summary.totalChars.toLocaleString()}
+                      </span>{" "}
+                      characters in the previewed chunks.
+                      {indexedPreviewData.summary.looksLikePlaceholderNotice ? (
+                        <span className="mt-1 block text-amber-800">
+                          This file is using an “unavailable text” notice—extraction
+                          did not produce usable body text for indexing.
+                        </span>
+                      ) : null}
+                    </p>
+                    {indexedPreviewData.chunks.length === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        No chunks in the database for this document (indexing may have
+                        failed).
+                      </p>
+                    ) : (
+                      indexedPreviewData.chunks.map((ch) => (
+                        <div
+                          key={ch.chunkIndex}
+                          className="rounded-xl border border-gray-100 bg-gray-50/80 p-3"
+                        >
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                            Chunk {ch.chunkIndex}
+                            <span className="font-normal normal-case text-gray-400">
+                              {" "}
+                              · {ch.charCount.toLocaleString()} chars
+                              {ch.truncated ? " · preview truncated" : ""}
+                            </span>
+                          </p>
+                          <pre className="max-h-52 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-800">
+                            {ch.content}
+                          </pre>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <p className="border-t border-gray-100 px-4 py-2 text-[10px] text-gray-500">
+                This is exactly what was embedded for vector search (per chunk). Not
+                medical advice.
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         <nav
           className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-5 md:left-1/2 md:right-auto md:w-[400px] md:-translate-x-1/2"
