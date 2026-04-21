@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MediSage — Health data copilot",
   description:
-    "MediSage organizes your medical documents in Drive and answers questions with citations from your own files.",
+    "MediSage is your private health document copilot: organize medical files in Google Drive and ask questions with AI grounded in your own documents.",
 };
 
 export default function RootLayout({
