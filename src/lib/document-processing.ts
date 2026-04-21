@@ -1,14 +1,18 @@
 import pdfParse from "pdf-parse";
 import { DOCUMENT_CATEGORIES, type DocumentCategory } from "@/lib/categories";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import { requireEnv } from "@/lib/env";
 
 const CHUNK_SIZE = 1800;
 const CHUNK_OVERLAP = 200;
 
-/** Model for Responses API file/image extraction (must support `input_file` PDFs when applicable). */
+/** Primary model for Responses API PDF/image extraction. */
 const DOCUMENT_PARSE_MODEL =
   process.env.OPENAI_DOCUMENT_PARSE_MODEL ?? "gpt-4o-mini";
+
+/** Second model tried when the primary returns empty (image-heavy PDFs often need full gpt-4o). */
+const DOCUMENT_PARSE_FALLBACK_MODEL =
+  process.env.OPENAI_DOCUMENT_PARSE_FALLBACK_MODEL ?? "gpt-4o";
 
 const OPENAI_PARSE_DISABLED =
   process.env.OPENAI_DOCUMENT_PARSE_DISABLED === "1" ||
@@ -16,6 +20,12 @@ const OPENAI_PARSE_DISABLED =
 
 /** Model must output this alone when nothing is readable (easier to detect than free-form). */
 const OPENAI_EXTRACTION_EMPTY_MARKER = "NO_READABLE_CONTENT";
+
+function modelsToTryForDocumentParse (): string[] {
+  return [
+    ...new Set([DOCUMENT_PARSE_MODEL, DOCUMENT_PARSE_FALLBACK_MODEL].filter(Boolean)),
+  ];
+}
 
 function safeFileNameForOpenAI (name: string): string {
   const base = name.split(/[/\\]/).pop() ?? "document";
@@ -67,28 +77,50 @@ function openAIExtractionPrompt (): string {
   );
 }
 
-function textFromOpenAIResponse (resp: {
-  output_text?: string | null;
-  output?: Array<{
-    type?: string;
-    content?: Array<{ type?: string; text?: string }>;
-  }>;
-}): string {
-  const direct = resp.output_text?.trim();
-  if (direct) return direct;
-  for (const item of resp.output ?? []) {
-    if (item.type === "message" && Array.isArray(item.content)) {
-      const texts = item.content
-        .filter(
-          (c): c is { type: "output_text"; text: string } =>
-            c.type === "output_text" && typeof c.text === "string",
-        )
-        .map((c) => c.text);
-      if (texts.length > 0) return texts.join("\n\n").trim();
+function stripEmptyContentMarker (raw: string): string {
+  const t = raw.trim();
+  if (t === OPENAI_EXTRACTION_EMPTY_MARKER) return "";
+  if (t.startsWith(OPENAI_EXTRACTION_EMPTY_MARKER)) {
+    return t.slice(OPENAI_EXTRACTION_EMPTY_MARKER.length).trim();
+  }
+  return t;
+}
+
+/** Collect assistant-visible text from a Responses API object (shape varies by model). */
+function collectTextFromOpenAIResponse (resp: unknown): string {
+  const r = resp as Record<string, unknown>;
+  const direct = r.output_text;
+  if (typeof direct === "string" && direct.trim()) {
+    return direct.trim();
+  }
+  const output = r.output;
+  if (!Array.isArray(output)) return "";
+  const parts: string[] = [];
+  for (const item of output) {
+    collectFromOutputItem(item, parts);
+  }
+  return parts.join("\n\n").trim();
+}
+
+function collectFromOutputItem (item: unknown, acc: string[]): void {
+  if (item == null || typeof item !== "object") return;
+  const o = item as Record<string, unknown>;
+  if (o.type === "output_text" && typeof o.text === "string" && o.text.trim()) {
+    acc.push(o.text);
+  }
+  if (o.type === "message" && Array.isArray(o.content)) {
+    for (const c of o.content) {
+      collectFromOutputItem(c, acc);
     }
   }
-  return "";
 }
+
+type UserContentPart =
+  | { type: "input_file"; file_id: string }
+  | { type: "input_file"; filename: string; file_data: string }
+  | { type: "input_image"; file_id: string; detail: "high" }
+  | { type: "input_image"; image_url: string; detail: "high" }
+  | { type: "input_text"; text: string };
 
 async function extractTextWithOpenAIResponses (
   mimeType: string,
@@ -101,51 +133,129 @@ async function extractTextWithOpenAIResponses (
     maxRetries: 0,
   });
   const resolvedMime = resolvedMimeForParsing(mimeType, fileName);
-  const b64 = buffer.toString("base64");
   const safeName = safeFileNameForOpenAI(fileName);
-
   const isImage = resolvedMime.startsWith("image/");
   const pdfFilename = /\.pdf$/i.test(safeName) ? safeName : `${safeName}.pdf`;
-  const userContent: Array<
-    | { type: "input_file"; filename: string; file_data: string }
-    | { type: "input_image"; image_url: string; detail: "auto" | "high" }
-    | { type: "input_text"; text: string }
-  > = isImage
-    ? [
+  const uploadBasename = isImage ? safeName : pdfFilename;
+  const prompt = openAIExtractionPrompt();
+  const models = modelsToTryForDocumentParse();
+
+  async function oneParse (model: string, content: UserContentPart[]): Promise<string> {
+    const resp = await client.responses.create({
+      model,
+      input: [{ role: "user", content }],
+      temperature: 0,
+      max_output_tokens: 32_768,
+      store: false,
+      truncation: "auto",
+    });
+    if (resp.error) {
+      throw new Error(resp.error.message ?? "OpenAI document parse failed");
+    }
+    const status = (resp as { status?: string }).status;
+    if (status && status !== "completed") {
+      const inc = (resp as { incomplete_details?: { reason?: string } })
+        .incomplete_details;
+      console.warn("[extract] non-completed response", {
+        model,
+        status,
+        incomplete: inc ?? null,
+      });
+    }
+    const raw = stripEmptyContentMarker(collectTextFromOpenAIResponse(resp));
+    if (!raw) {
+      console.warn("[extract] empty text after parse", {
+        model,
+        status,
+        outputItems: Array.isArray((resp as { output?: unknown }).output)
+          ? (resp as { output: unknown[] }).output.length
+          : 0,
+      });
+    }
+    return raw;
+  }
+
+  function base64Content (): UserContentPart[] {
+    const b64 = buffer.toString("base64");
+    if (isImage) {
+      return [
         {
           type: "input_image",
           image_url: `data:${resolvedMime};base64,${b64}`,
           detail: "high",
         },
-        { type: "input_text", text: openAIExtractionPrompt() },
-      ]
-    : [
-        {
-          type: "input_file",
-          filename: pdfFilename,
-          file_data: `data:${resolvedMime};base64,${b64}`,
-        },
-        { type: "input_text", text: openAIExtractionPrompt() },
+        { type: "input_text", text: prompt },
       ];
-
-  const resp = await client.responses.create({
-    model: DOCUMENT_PARSE_MODEL,
-    input: [{ role: "user", content: userContent }],
-    temperature: 0,
-    max_output_tokens: 16_384,
-    store: false,
-  });
-
-  if (resp.error) {
-    throw new Error(resp.error.message ?? "OpenAI document parse failed");
+    }
+    return [
+      {
+        type: "input_file",
+        filename: pdfFilename,
+        file_data: `data:${resolvedMime};base64,${b64}`,
+      },
+      { type: "input_text", text: prompt },
+    ];
   }
 
-  let raw = textFromOpenAIResponse(resp).trim();
-  if (raw === OPENAI_EXTRACTION_EMPTY_MARKER) return "";
-  if (raw.startsWith(OPENAI_EXTRACTION_EMPTY_MARKER)) {
-    raw = raw.slice(OPENAI_EXTRACTION_EMPTY_MARKER.length).trim();
+  function fileIdContent (fileId: string): UserContentPart[] {
+    if (isImage) {
+      return [
+        { type: "input_image", file_id: fileId, detail: "high" },
+        { type: "input_text", text: prompt },
+      ];
+    }
+    return [{ type: "input_file", file_id: fileId }, { type: "input_text", text: prompt }];
   }
-  return raw;
+
+  let uploadedId: string | null = null;
+  try {
+    const uploadable = await toFile(buffer, uploadBasename, { type: resolvedMime });
+    const created = await client.files.create({
+      file: uploadable,
+      purpose: "user_data",
+    });
+    uploadedId = created.id;
+    for (const model of models) {
+      try {
+        const t = await oneParse(model, fileIdContent(uploadedId));
+        if (t.length > 0) {
+          console.info("[extract] OpenAI extraction ok", {
+            model,
+            via: "file_id",
+            chars: t.length,
+          });
+          return t;
+        }
+      } catch (e) {
+        console.warn("[extract] file_id parse attempt failed", { model, err: e });
+      }
+    }
+  } catch (e) {
+    console.warn("[extract] OpenAI files.create failed; will try base64", e);
+  } finally {
+    if (uploadedId) {
+      await client.files.delete(uploadedId).catch(() => {});
+      uploadedId = null;
+    }
+  }
+
+  for (const model of models) {
+    try {
+      const t = await oneParse(model, base64Content());
+      if (t.length > 0) {
+        console.info("[extract] OpenAI extraction ok", {
+          model,
+          via: "base64",
+          chars: t.length,
+        });
+        return t;
+      }
+    } catch (e) {
+      console.warn("[extract] base64 parse attempt failed", { model, err: e });
+    }
+  }
+
+  return "";
 }
 
 async function extractPdfTextWithPdfParse (buffer: Buffer): Promise<string> {
@@ -189,8 +299,8 @@ export function prepareTextForVectorIndexing (
   const notice =
     `[Indexed content unavailable for "${fileName}"] ` +
     `No usable text remained after extraction (${collapsedLen} characters). ` +
-    `Typical causes: encrypted PDFs, corrupt files, or extraction limits. ` +
-    `Try a smaller export, a .txt copy, or another PDF export from the source app.`;
+    `The hosted parser and PDF fallback both produced nothing usable. ` +
+    `For scans or photos inside a PDF, re-upload after deploying the latest app (uses OpenAI file upload + gpt-4o fallback), or upload a .txt / image file instead.`;
 
   return {
     textForChunks: notice,

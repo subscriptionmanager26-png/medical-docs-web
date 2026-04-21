@@ -56,7 +56,7 @@ After deploy, update Supabase **Site URL** and **Redirect URLs** to match the li
 1. User opens the site → **Sign in with Google** (Drive scope + offline access).
 2. After redirect, the app stores the Google **refresh token** in `google_credentials` (when Google returns one).
 3. In the app, click **Prepare Drive folders** once to create the root folder and category folders in Drive.
-4. Upload PDFs/text; the app classifies them and uploads into the matching folder, then **extracts text** (PDFs and common images go through the **OpenAI Responses API** with `input_file` / vision; plain text is read locally), **chunks, embeds**, and stores vectors in Supabase (`document_chunks`, pgvector) for retrieval and chat. If that parse fails for a PDF, the server falls back to `pdf-parse`.
+4. Upload PDFs/text; the app classifies them and uploads into the matching folder, then **extracts text** (PDFs and common images go through the **OpenAI Responses API**: file is uploaded to OpenAI with `purpose: user_data`, then parsed with `input_file` / `input_image`; it then tries your **fallback model**, default **`gpt-4o`**, if the primary model returns empty—important for scans / photo PDFs). Plain text is read locally. If all OpenAI parse attempts fail for a PDF, the server falls back to `pdf-parse`. Env: `OPENAI_DOCUMENT_PARSE_MODEL`, `OPENAI_DOCUMENT_PARSE_FALLBACK_MODEL`.
 
 ## Vector storage and per-user isolation
 
