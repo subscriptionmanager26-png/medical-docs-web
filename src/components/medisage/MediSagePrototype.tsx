@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React from "react";
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
   Home,
@@ -8,24 +9,23 @@ import {
   Activity,
   MessageCircle,
   Stethoscope,
-  Search,
   Plus,
   FileText,
-  Pill,
-  FileStack,
   Send,
   CheckCircle2,
   Loader2,
   Microscope,
-  ScanFace,
   ChevronRight,
   Droplets,
-  HeartPulse,
   AlertCircle,
   CalendarPlus,
   ShoppingBag,
   ChevronLeft,
 } from "lucide-react";
+import { VitalsTab } from "@/app/app/vitals-tab";
+import { VITALS_SUMMARY } from "@/lib/medisage/vitals-mock";
+import { IndexedTextPreviewModal } from "@/components/medisage/indexed-text-preview-modal";
+import { useMedisagePrototypeLogic } from "@/hooks/use-medisage-prototype-logic";
 
 // --- DESIGN SYSTEM CONSTANTS (Clean + Calm + Modern) ---
 
@@ -43,246 +43,50 @@ const TEXT_PRIMARY = "text-[#1A1A1A]";
 
 const TEXT_SECONDARY = "text-[#6B7280]";
 
-// Accent Colors
-
-const COLOR_ACCENT = "#FF7A00";
-
-const COLOR_SUCCESS = "#22C55E";
-
-const COLOR_WARNING = "#F59E0B";
-
-const COLOR_URGENT = "#EF4444";
-
-// --- MOCK DATA ---
-
-const MOCK_FILES = [
-
- { id: 1, title: 'Complete Blood Count (CBC)', date: 'Oct 12', folder: 'Blood', type: 'pdf', icon: Droplets },
-
- { id: 4, title: 'Lipid Panel Results', date: 'Oct 12', folder: 'Blood', type: 'pdf', icon: Droplets },
-
- { id: 2, title: 'Dr. Sharma - General Checkup', date: 'Sep 28', folder: 'Rx', type: 'image', icon: Pill },
-
- { id: 3, title: 'Chest X-Ray Report', date: 'Jul 15', folder: 'X-Rays', type: 'image', icon: ScanFace },
-
-];
-
-const VAULT_CATEGORIES = [
-
- { name: 'Blood', icon: Droplets, count: 12 },
-
- { name: 'Heart', icon: HeartPulse, count: 5 },
-
- { name: 'X-Rays', icon: ScanFace, count: 4 },
-
- { name: 'Rx', icon: Pill, count: 8 },
-
-];
-
-const BIOMARKERS = [
-
- { id: 4, section: 'Urgent Review', category: 'Cardiac', name: 'Troponin T', value: '0.4 ng/mL', status: 'High', statusColor: `bg-[${COLOR_URGENT}]`, strokeEnd: COLOR_URGENT, points: "0,30 30,10 60,35 100,5" },
-
- { id: 3, section: 'Attention Needed', category: 'Hormones', name: 'Vitamin D, 25-OH', value: '24 ng/mL', status: 'Low', statusColor: `bg-[${COLOR_WARNING}]`, strokeEnd: COLOR_WARNING, points: "0,10 30,15 60,30 100,35" },
-
- { id: 1, section: 'Normal', category: 'Lipid Panel', name: 'Apolipoprotein A1', value: '170 mg/dL', status: 'Optimal', statusColor: `bg-[${COLOR_SUCCESS}]`, strokeEnd: COLOR_SUCCESS, points: "0,35 30,20 60,30 100,10" },
-
- { id: 2, section: 'Normal', category: 'Metabolic', name: 'Glucose (Fasting)', value: '88 mg/dL', status: 'Optimal', statusColor: `bg-[${COLOR_SUCCESS}]`, strokeEnd: COLOR_SUCCESS, points: "0,15 35,25 65,20 100,20" },
-
-] as const;
-
-type BiomarkerRow = (typeof BIOMARKERS)[number];
-
-// Custom SVG Sparkline Component
-
-const Sparkline = ({ points, endColor }: { points: string; endColor: string }) => (
-
- <svg width="80" height="40" viewBox="0 0 100 40" className="overflow-visible">
-
- <defs>
-
- <linearGradient id={`grad-${endColor}`} x1="0" y1="0" x2="1" y2="0">
-
- <stop offset="0%" stopColor="#E5E7EB" />
-
- <stop offset="100%" stopColor={endColor} />
-
- </linearGradient>
-
- </defs>
-
- <polyline points={points} fill="none" stroke={`url(#grad-${endColor})`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-
- {points.split(' ').map((point, idx, arr) => {
-
- const [cx, cy] = point.split(',');
-
- const isLast = idx === arr.length - 1;
-
- return (
-
- <circle
-
- key={idx} cx={cx} cy={cy} r="3.5"
-
- fill={isLast ? endColor : "#FFFFFF"}
-
- stroke={isLast ? "none" : (idx === 0 ? "#E5E7EB" : endColor)}
-
- strokeWidth={isLast ? "0" : "2"}
-
- />
-
- );
-
- })}
-
- </svg>
-
-);
-
-type PrototypeChatMessage = { role: string; text: string; citation?: string };
-type PrototypeChat = { id: number; title: string; date: string; messages: PrototypeChatMessage[] };
-
 export default function MediSagePrototype() {
-
- const [activeTab, setActiveTab] = useState('home');
-
- const [files, setFiles] = useState(MOCK_FILES);
-
- const [isUploading, setIsUploading] = useState(false);
-
- const [uploadStep, setUploadStep] = useState(0);
-
- // Navigation States
-
- const [activeChatId, setActiveChatId] = useState<number | null>(null);
-
- const [activeFolder, setActiveFolder] = useState<string | null>(null);
-
- const [chats, setChats] = useState<PrototypeChat[]>([
-
- { id: 1, title: 'Lipid Panel Review', date: 'Today', messages: [{ role: 'ai', text: 'Your recent Lipid Panel shows an optimal Apolipoprotein A1 level of 170 mg/dL. This indicates excellent cardiovascular health.', citation: 'Lipid Panel - Oct 12' }] },
-
- { id: 2, title: 'General Health Query', date: 'Yesterday', messages: [{ role: 'ai', text: 'Hello Alex. I am your MediSage AI. I can summarize your reports or track your health history. How can I help you today?' }] }
-
- ]);
-
- const [chatInput, setChatInput] = useState('');
-
- const chatEndRef = useRef<HTMLDivElement | null>(null);
-
- useEffect(() => {
-
- chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-
- }, [chats, activeChatId, activeTab]);
-
- const handleUploadClick = () => {
-
- setIsUploading(true);
-
- setUploadStep(0);
-
- setTimeout(() => setUploadStep(1), 1500);
-
- setTimeout(() => setUploadStep(2), 3000);
-
- setTimeout(() => {
-
- setUploadStep(3);
-
- const newFile = {
-
- id: Date.now(), title: 'Thyroid Panel Results', date: 'Just now', folder: 'Blood', type: 'pdf', icon: Droplets,
-
- };
-
- setFiles([newFile, ...files]);
-
- setTimeout(() => setIsUploading(false), 1500);
-
- }, 4500);
-
- };
-
- const createNewChat = () => {
-
- const newChat = {
-
- id: Date.now(),
-
- title: 'New Conversation',
-
- date: 'Just now',
-
- messages: [{ role: 'ai', text: 'Hello! How can I assist you with your health today?' }]
-
- };
-
- setChats([newChat, ...chats]);
-
- setActiveChatId(newChat.id);
-
- };
-
- const handleSendMessage = () => {
-
- if (!chatInput.trim() || !activeChatId) return;
-
- const updatedChats = chats.map(chat => {
-
- if (chat.id === activeChatId) {
-
- const newMessages = [...chat.messages, { role: 'user', text: chatInput }];
-
- let newTitle = chat.title;
-
- if (chat.title === 'New Conversation') {
-
- newTitle = chatInput.length > 22 ? chatInput.substring(0, 22) + '...' : chatInput;
-
- }
-
- return { ...chat, title: newTitle, messages: newMessages };
-
- }
-
- return chat;
-
- });
-
- setChats(updatedChats);
-
- setChatInput('');
-
- setTimeout(() => {
-
- setChats(currentChats => currentChats.map(chat => {
-
- if (chat.id === activeChatId) {
-
- return {
-
- ...chat,
-
- messages: [...chat.messages, { role: 'ai', text: 'Based on your latest records, your markers appear stable. Is there a specific document or test you would like me to review?' }]
-
- };
-
- }
-
- return chat;
-
- }));
-
- }, 1200);
-
- };
+ const {
+ activeTab,
+ setActiveTab,
+ navToTab,
+ loading,
+ vaultFiles,
+ categoriesForVault,
+ fileInputRef,
+ openFilePicker,
+ onHiddenFileChange,
+ overlayOpen,
+ uploadPhase,
+ uploadOutcome,
+ userLabel,
+ avatarUrl,
+ greetingName,
+ chatInput,
+ setChatInput,
+ chats,
+ activeChatId,
+ setActiveChatId,
+ chatting,
+ createNewChat,
+ submitChat,
+ activeFolder,
+ setActiveFolder,
+ signOut,
+ initDrive,
+ initing,
+ message,
+ indexedPreviewOpen,
+ indexedPreviewTitle,
+ indexedPreviewLoading,
+ indexedPreviewError,
+ indexedPreviewData,
+ closeIndexedPreview,
+ openIndexedPreview,
+ chatEndRef,
+ } = useMedisagePrototypeLogic();
 
  const getHeaderContent = () => {
 
- if (activeTab === 'home') return { title: 'MediSage', subtitle: 'Good morning, Alex', showAvatar: true };
+ if (activeTab === 'home') return { title: 'MediSage', subtitle: `Good morning, ${greetingName}`, showAvatar: true };
 
  if (activeTab === 'vault') {
 
@@ -316,14 +120,6 @@ export default function MediSagePrototype() {
 
  const headerInfo = getHeaderContent();
 
- // Vitals Grouping
-
- const urgentVitals = BIOMARKERS.filter(b => b.section === 'Urgent Review');
-
- const attentionVitals = BIOMARKERS.filter(b => b.section === 'Attention Needed');
-
- const normalVitals = BIOMARKERS.filter(b => b.section === 'Normal');
-
  return (
 
  <div className={`flex justify-center items-center w-full min-h-screen bg-[#E5E7EB] sm:p-8 font-['Inter',sans-serif]`}>
@@ -338,6 +134,23 @@ export default function MediSagePrototype() {
 
  <div className={`w-full max-w-[400px] h-[100dvh] sm:h-[850px] ${APP_BG} sm:rounded-[40px] shadow-2xl relative overflow-hidden flex flex-col sm:border-[8px] border-gray-900`}>
 
+ <input
+ ref={fileInputRef}
+ type="file"
+ className="hidden"
+ accept=".pdf,.txt,text/plain,application/pdf"
+ onChange={(e) => void onHiddenFileChange(e)}
+ />
+
+ <IndexedTextPreviewModal
+ open={indexedPreviewOpen}
+ title={indexedPreviewTitle}
+ loading={indexedPreviewLoading}
+ error={indexedPreviewError}
+ data={indexedPreviewData}
+ onClose={closeIndexedPreview}
+ />
+
  {/* Header */}
 
  <header className={`px-5 pt-12 pb-4 flex items-center justify-between sticky top-0 z-10 ${APP_BG}/95 backdrop-blur-md border-b border-[#E5E7EB]`}>
@@ -346,9 +159,16 @@ export default function MediSagePrototype() {
 
  {headerInfo.showAvatar && (
 
- <div className={`w-10 h-10 ${BTN_SECONDARY} !rounded-full`}>
+ <div className={`w-10 h-10 ${BTN_SECONDARY} !rounded-full overflow-hidden flex items-center justify-center`}>
 
- <span className={`text-[14px] font-semibold ${TEXT_PRIMARY}`}>AL</span>
+ {avatarUrl ? (
+ // eslint-disable-next-line @next/next/no-img-element
+ <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+ ) : (
+ <span className={`text-[14px] font-semibold ${TEXT_PRIMARY}`}>
+ {(userLabel || "M").slice(0, 1).toUpperCase()}
+ </span>
+ )}
 
  </div>
 
@@ -406,7 +226,7 @@ export default function MediSagePrototype() {
 
  <div className={`flex-1 ${INSET_SURFACE} p-4 flex flex-col items-center justify-center`}>
 
- <span className="text-[24px] font-semibold text-[#22C55E]">14</span>
+ <span className="text-[24px] font-semibold text-[#22C55E]">{VITALS_SUMMARY.normal}</span>
 
  <span className={`text-[12px] font-medium ${TEXT_SECONDARY} mt-1`}>Optimal</span>
 
@@ -414,7 +234,9 @@ export default function MediSagePrototype() {
 
  <div className={`flex-1 ${INSET_SURFACE} p-4 flex flex-col items-center justify-center`}>
 
- <span className="text-[24px] font-semibold text-[#F59E0B]">2</span>
+ <span className="text-[24px] font-semibold text-[#F59E0B]">
+ {VITALS_SUMMARY.urgent + VITALS_SUMMARY.attention}
+ </span>
 
  <span className={`text-[12px] font-medium ${TEXT_SECONDARY} mt-1`}>Attention</span>
 
@@ -428,7 +250,15 @@ export default function MediSagePrototype() {
 
  <div
 
- onClick={handleUploadClick}
+ onClick={() => openFilePicker()}
+ role="button"
+ tabIndex={0}
+ onKeyDown={(e) => {
+ if (e.key === "Enter" || e.key === " ") {
+ e.preventDefault();
+ openFilePicker();
+ }
+ }}
 
  className={`${CARD_SURFACE} p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform`}
 
@@ -452,7 +282,7 @@ export default function MediSagePrototype() {
 
  </div>
 
- <ChevronRight size={20} className="#E5E7EB" />
+ <ChevronRight size={20} className={TEXT_SECONDARY} />
 
  </div>
 
@@ -528,13 +358,13 @@ export default function MediSagePrototype() {
 
  <div className="grid grid-cols-2 gap-4">
 
- {VAULT_CATEGORIES.map((cat, idx) => (
+ {categoriesForVault.map(({ name, Icon, count }) => (
 
  <div
 
- key={idx}
+ key={name}
 
- onClick={() => setActiveFolder(cat.name)}
+ onClick={() => setActiveFolder(name)}
 
  className={`${CARD_SURFACE} p-4 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform`}
 
@@ -542,15 +372,15 @@ export default function MediSagePrototype() {
 
  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${INSET_SURFACE}`}>
 
- <cat.icon size={20} className={TEXT_SECONDARY} />
+ <Icon size={20} className={TEXT_SECONDARY} />
 
  </div>
 
  <div className="text-center">
 
- <h4 className={`font-medium ${TEXT_PRIMARY} text-[16px]`}>{cat.name}</h4>
+ <h4 className={`font-medium ${TEXT_PRIMARY} text-[16px]`}>{name}</h4>
 
- <p className={`text-[14px] ${TEXT_SECONDARY} mt-0.5`}>{cat.count} Files</p>
+ <p className={`text-[14px] ${TEXT_SECONDARY} mt-0.5`}>{count} Files</p>
 
  </div>
 
@@ -568,17 +398,32 @@ export default function MediSagePrototype() {
 
  <h3 className={`font-semibold ${TEXT_PRIMARY} text-[20px]`}>Recent Documents</h3>
 
+ {loading ? (
+ <span className={`text-[12px] ${TEXT_SECONDARY}`}>Loading…</span>
+ ) : null}
+
  </div>
 
  <div className="space-y-3">
 
- {files.slice(0, 3).map((file) => (
+ {vaultFiles.slice(0, 6).map((file) => (
 
- <div key={file.id} className={`${CARD_SURFACE} p-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-transform`}>
+ <div
+ key={file.id}
+ role="button"
+ tabIndex={0}
+ onClick={() => void openIndexedPreview(file.id, file.title)}
+ onKeyDown={(e) => {
+ if (e.key === "Enter" || e.key === " ") {
+ e.preventDefault();
+ void openIndexedPreview(file.id, file.title);
+ }
+ }}
+ className={`${CARD_SURFACE} p-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-transform`}>
 
  <div className={`w-12 h-12 flex items-center justify-center ${INSET_SURFACE}`}>
 
- <file.icon size={20} className={TEXT_SECONDARY} />
+ <file.Icon size={20} className={TEXT_SECONDARY} />
 
  </div>
 
@@ -590,7 +435,7 @@ export default function MediSagePrototype() {
 
  </div>
 
- <ChevronRight size={20} className="#E5E7EB" />
+ <ChevronRight size={20} className={TEXT_SECONDARY} />
 
  </div>
 
@@ -608,15 +453,26 @@ export default function MediSagePrototype() {
 
  <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
 
- {files.filter(f => f.folder === activeFolder).length > 0 ? (
+ {vaultFiles.filter(f => f.folder === activeFolder).length > 0 ? (
 
- files.filter(f => f.folder === activeFolder).map((file) => (
+ vaultFiles.filter(f => f.folder === activeFolder).map((file) => (
 
- <div key={file.id} className={`${CARD_SURFACE} p-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-transform`}>
+ <div
+ key={file.id}
+ role="button"
+ tabIndex={0}
+ onClick={() => void openIndexedPreview(file.id, file.title)}
+ onKeyDown={(e) => {
+ if (e.key === "Enter" || e.key === " ") {
+ e.preventDefault();
+ void openIndexedPreview(file.id, file.title);
+ }
+ }}
+ className={`${CARD_SURFACE} p-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-transform`}>
 
  <div className={`w-12 h-12 flex items-center justify-center ${INSET_SURFACE}`}>
 
- <file.icon size={20} className={TEXT_SECONDARY} />
+ <file.Icon size={20} className={TEXT_SECONDARY} />
 
  </div>
 
@@ -628,7 +484,7 @@ export default function MediSagePrototype() {
 
  </div>
 
- <ChevronRight size={20} className="#E5E7EB" />
+ <ChevronRight size={20} className={TEXT_SECONDARY} />
 
  </div>
 
@@ -660,127 +516,9 @@ export default function MediSagePrototype() {
 
  {activeTab === 'vitals' && (
 
- <div className="space-y-8 animate-in fade-in duration-300">
+ <div className="animate-in fade-in duration-300">
 
- {/* Summary Cards */}
-
- <div className="flex gap-3">
-
- <div className={`flex-1 ${INSET_SURFACE} p-3 flex flex-col items-center justify-center`}>
-
- <span className={`text-[20px] font-semibold text-[${COLOR_URGENT}]`}>{urgentVitals.length}</span>
-
- <span className={`text-[12px] font-medium ${TEXT_SECONDARY} mt-1`}>Urgent</span>
-
- </div>
-
- <div className={`flex-1 ${INSET_SURFACE} p-3 flex flex-col items-center justify-center`}>
-
- <span className={`text-[20px] font-semibold text-[${COLOR_WARNING}]`}>{attentionVitals.length}</span>
-
- <span className={`text-[12px] font-medium ${TEXT_SECONDARY} mt-1`}>Attention</span>
-
- </div>
-
- <div className={`flex-1 ${INSET_SURFACE} p-3 flex flex-col items-center justify-center`}>
-
- <span className={`text-[20px] font-semibold text-[${COLOR_SUCCESS}]`}>{normalVitals.length}</span>
-
- <span className={`text-[12px] font-medium ${TEXT_SECONDARY} mt-1`}>Normal</span>
-
- </div>
-
- </div>
-
- {/* Vitals Rendering Function */}
-
- {(() => {
-
- const renderSection = (
- title: string,
- data: readonly BiomarkerRow[],
- iconColorClass: string,
- ) => {
-
- if (data.length === 0) return null;
-
- return (
-
- <div className="mb-6">
-
- <h3 className={`font-semibold ${TEXT_PRIMARY} text-[20px] mb-4 pl-1 flex items-center gap-2`}>
-
- <span className={`w-2 h-2 rounded-full ${iconColorClass}`}></span>
-
- {title}
-
- </h3>
-
- <div className="space-y-4">
-
- {data.map((biomarker) => (
-
- <div key={biomarker.id} className={`${CARD_SURFACE} p-5 flex items-center justify-between`}>
-
- <div className="flex-1">
-
- <h4 className={`font-medium text-[14px] ${TEXT_SECONDARY} mb-1`}>{biomarker.category}</h4>
-
- <h3 className={`font-semibold ${TEXT_PRIMARY} text-[20px] mb-3`}>{biomarker.name}</h3>
-
- <div className="flex flex-wrap gap-2">
-
- <span className={`flex items-center gap-1.5 px-3 py-1 bg-[#FAFAFA] border border-[#E5E7EB] rounded-[12px] text-[14px] font-medium ${TEXT_PRIMARY}`}>
-
- <span className={`w-2 h-2 rounded-full ${biomarker.statusColor}`}></span>
-
- {biomarker.status}
-
- </span>
-
- <span className={`flex items-center px-3 py-1 bg-[#FAFAFA] border border-[#E5E7EB] rounded-[12px] text-[14px] font-medium ${TEXT_PRIMARY}`}>
-
- {biomarker.value}
-
- </span>
-
- </div>
-
- </div>
-
- <div className="w-[80px] flex justify-end pl-2">
-
- <Sparkline points={biomarker.points} endColor={biomarker.strokeEnd} />
-
- </div>
-
- </div>
-
- ))}
-
- </div>
-
- </div>
-
- );
-
- };
-
- return (
-
- <div>
-
- {renderSection('Urgent Review', urgentVitals, `bg-[${COLOR_URGENT}]`)}
-
- {renderSection('Attention Needed', attentionVitals, `bg-[${COLOR_WARNING}]`)}
-
- {renderSection('Normal', normalVitals, `bg-[${COLOR_SUCCESS}]`)}
-
- </div>
-
- );
-
- })()}
+ <VitalsTab />
 
  </div>
 
@@ -824,11 +562,11 @@ export default function MediSagePrototype() {
 
  <h4 className={`font-medium ${TEXT_PRIMARY} text-[16px] truncate`}>{chat.title}</h4>
 
- <p className={`text-[14px] ${TEXT_SECONDARY} mt-0.5`}>{chat.date}</p>
+ <p className={`text-[14px] ${TEXT_SECONDARY} mt-0.5`}>{chat.updated}</p>
 
  </div>
 
- <ChevronRight size={20} className="#E5E7EB" />
+ <ChevronRight size={20} className={TEXT_SECONDARY} />
 
  </div>
 
@@ -844,43 +582,109 @@ export default function MediSagePrototype() {
 
  <div className="flex-1 overflow-y-auto space-y-6 pb-20 pt-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
 
- {chats.find(c => c.id === activeChatId)?.messages.map((msg, idx) => (
+ {(chats.find(c => c.id === activeChatId)?.messages.length === 0 ? (
 
- <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+ <p className={`rounded-[24px] border border-dashed border-[#E5E7EB] bg-[#FAFAFA] px-4 py-6 text-center text-[14px] ${TEXT_SECONDARY}`}>
 
- <div className={`max-w-[85%] p-4 rounded-[24px] ${
-
- msg.role === 'user'
-
- ? 'bg-[#FF7A00] text-white rounded-br-[8px]'
-
- : 'bg-[#FFFFFF] text-[#1A1A1A] border border-[#E5E7EB] shadow-sm rounded-bl-[8px]'
-
- }`}>
-
- <p className={`text-[16px] leading-relaxed`}>
-
- {msg.text}
+ Ask anything about the text we indexed from your documents. Not medical advice.
 
  </p>
 
- {msg.citation && (
+ ) : null)}
 
- <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAFAFA] border border-[#E5E7EB] rounded-[12px] text-[12px] font-medium ${TEXT_SECONDARY}`}>
+ {chats.find(c => c.id === activeChatId)?.messages.map((msg, idx) =>
 
- <FileText size={14} className={TEXT_SECONDARY} />
+ msg.role === "user" ? (
 
- {msg.citation}
+ <div key={idx} className="flex justify-end">
+
+ <div className="max-w-[85%] rounded-[24px] rounded-br-[8px] bg-[#FF7A00] p-4 text-white">
+
+ <p className="text-[16px] leading-relaxed">{msg.content}</p>
 
  </div>
+
+ </div>
+
+ ) : (
+
+ <div key={idx} className="flex justify-start">
+
+ <div className="max-w-[85%] rounded-[24px] rounded-bl-[8px] border border-[#E5E7EB] bg-[#FFFFFF] p-4 text-[#1A1A1A] shadow-sm">
+
+ <p className="whitespace-pre-wrap text-[16px] leading-relaxed">{msg.content}</p>
+
+ {msg.citations && msg.citations.length > 0 ? (
+
+ <div className="mt-3 flex flex-wrap gap-2 border-t border-[#E5E7EB] pt-3">
+
+ {msg.citations.map((c) => (
+
+ <span key={c.documentId} className="inline-flex max-w-full flex-wrap items-center gap-1">
+
+ <Link
+
+ href={`/api/drive/download/${c.driveFileId}`}
+
+ className="inline-flex max-w-[200px] items-center rounded-full bg-[#FF7A00]/10 px-3 py-1 text-[12px] font-semibold text-[#FF7A00] ring-1 ring-[#FF7A00]/25"
+
+ >
+
+ <span className="truncate">{c.title}</span>
+
+ </Link>
+
+ <button
+
+ type="button"
+
+ onClick={() => void openIndexedPreview(c.documentId, c.title)}
+
+ className="rounded-full bg-[#FAFAFA] px-2 py-1 text-[10px] font-semibold text-[#1A1A1A] ring-1 ring-[#E5E7EB]"
+
+ >
+
+ Indexed
+
+ </button>
+
+ </span>
+
+ ))}
+
+ </div>
+
+ ) : null}
+
+ {msg.retrievalNote ? (
+
+ <p className={`mt-2 text-[11px] ${TEXT_SECONDARY}`}>{msg.retrievalNote}</p>
+
+ ) : null}
+
+ </div>
+
+ </div>
+
+ ),
 
  )}
 
- </div>
+ {chatting ? (
+
+ <div className="flex justify-start">
+
+ <div className="inline-flex max-w-[85%] items-center gap-2 rounded-[24px] border border-[#E5E7EB] bg-[#FFFFFF] px-3 py-2 text-[12px] text-[#6B7280]">
+
+ <Loader2 size={14} className="animate-spin text-[#FF7A00]" />
+
+ Thinking…
 
  </div>
 
- ))}
+ </div>
+
+ ) : null}
 
  <div ref={chatEndRef} />
 
@@ -900,7 +704,12 @@ export default function MediSagePrototype() {
 
  onChange={(e) => setChatInput(e.target.value)}
 
- onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+ onKeyDown={(e) => {
+ if (e.key === "Enter") {
+ e.preventDefault();
+ void submitChat();
+ }
+ }}
 
  placeholder="Ask your health AI..."
 
@@ -910,15 +719,15 @@ export default function MediSagePrototype() {
 
  <button
 
- onClick={handleSendMessage}
+ onClick={() => void submitChat()}
 
- disabled={!chatInput.trim()}
+ disabled={chatting || !chatInput.trim()}
 
- className={`w-10 h-10 flex items-center justify-center rounded-[16px] transition-colors ${chatInput.trim() ? 'bg-[#FF7A00] text-white' : 'bg-[#FAFAFA] text-[#E5E7EB] border border-[#E5E7EB]'}`}
+ className={`w-10 h-10 flex items-center justify-center rounded-[16px] transition-colors ${chatInput.trim() && !chatting ? 'bg-[#FF7A00] text-white' : 'bg-[#FAFAFA] text-[#E5E7EB] border border-[#E5E7EB]'}`}
 
  >
 
- <Send size={18} className={`${chatInput.trim() ? 'ml-1' : ''}`} />
+ <Send size={18} className={`${chatInput.trim() && !chatting ? 'ml-1' : ''}`} />
 
  </button>
 
@@ -1000,6 +809,62 @@ export default function MediSagePrototype() {
 
  </div>
 
+ <div className={`my-4 h-px w-full bg-[#E5E7EB]`} />
+
+ <div className={`${CARD_SURFACE} p-5`}>
+
+ <h4 className={`font-semibold ${TEXT_PRIMARY} text-[16px]`}>Account</h4>
+
+ <p className={`mt-1 text-[14px] ${TEXT_SECONDARY}`}>{userLabel || "—"}</p>
+
+ </div>
+
+ {message ? (
+
+ <p className={`rounded-[16px] border border-[#FF7A00]/25 bg-[#FF7A00]/10 px-4 py-3 text-[14px] ${TEXT_PRIMARY}`}>
+
+ {message}
+
+ </p>
+
+ ) : null}
+
+ <button
+
+ type="button"
+
+ onClick={() => void initDrive()}
+
+ disabled={initing}
+
+ className={`w-full ${CARD_SURFACE} p-4 text-left text-[16px] font-semibold ${TEXT_PRIMARY} transition active:scale-[0.98] disabled:opacity-50`}
+
+ >
+
+ {initing ? "Preparing Drive…" : "Prepare Google Drive folders"}
+
+ </button>
+
+ <button
+
+ type="button"
+
+ onClick={() => void signOut()}
+
+ className="w-full rounded-[16px] bg-[#1A1A1A] px-4 py-3.5 text-[16px] font-semibold text-white transition hover:opacity-95 active:scale-[0.99]"
+
+ >
+
+ Sign out
+
+ </button>
+
+ <p className={`text-center text-[11px] ${TEXT_SECONDARY}`}>
+
+ MediSage does not replace a clinician. AI answers may be incomplete.
+
+ </p>
+
  </div>
 
  )}
@@ -1012,15 +877,15 @@ export default function MediSagePrototype() {
 
  <nav className="flex justify-between items-center max-w-sm mx-auto">
 
- <NavItem icon={Home} label="Home" isActive={activeTab === 'home'} onClick={() => setActiveTab('home')} />
+ <NavItem icon={Home} label="Home" isActive={activeTab === 'home'} onClick={() => navToTab('home')} />
 
- <NavItem icon={Folder} label="Vault" isActive={activeTab === 'vault'} onClick={() => { setActiveTab('vault'); setActiveFolder(null); }} />
+ <NavItem icon={Folder} label="Vault" isActive={activeTab === 'vault'} onClick={() => navToTab('vault')} />
 
- <NavItem icon={Activity} label="Vitals" isActive={activeTab === 'vitals'} onClick={() => setActiveTab('vitals')} />
+ <NavItem icon={Activity} label="Vitals" isActive={activeTab === 'vitals'} onClick={() => navToTab('vitals')} />
 
- <NavItem icon={MessageCircle} label="AI Chat" isActive={activeTab === 'chat'} onClick={() => { if(activeTab === 'chat') setActiveChatId(null); setActiveTab('chat'); }} />
+ <NavItem icon={MessageCircle} label="AI Chat" isActive={activeTab === 'chat'} onClick={() => navToTab('chat')} />
 
- <NavItem icon={CalendarPlus} label="Services" isActive={activeTab === 'services'} onClick={() => setActiveTab('services')} />
+ <NavItem icon={CalendarPlus} label="Services" isActive={activeTab === 'services'} onClick={() => navToTab('services')} />
 
  </nav>
 
@@ -1028,33 +893,41 @@ export default function MediSagePrototype() {
 
  {/* UPLOAD OVERLAY */}
 
- {isUploading && (
+ {overlayOpen && (
 
- <div className="absolute inset-0 bg-[#FFFFFF]/90 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200">
+ <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#FFFFFF]/90 backdrop-blur-sm animate-in fade-in duration-200">
 
  <div className={`w-[85%] ${CARD_SURFACE} p-8 flex flex-col items-center text-center relative overflow-hidden`}>
 
  <div className="relative z-10 flex flex-col items-center">
 
- {uploadStep < 3 ? (
+ {uploadPhase === "done" ? (
 
- <div className="relative w-20 h-20 flex items-center justify-center mb-6">
+ <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#22C55E] text-white shadow-sm animate-in zoom-in-50 duration-300">
 
- <Loader2 size={48} className="text-[#FF7A00] animate-spin absolute" />
-
- <div className={`w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm`}>
-
- <Plus size={24} className="text-[#FF7A00] animate-pulse" />
+ <CheckCircle2 size={32} strokeWidth={2.5} />
 
  </div>
+
+ ) : uploadPhase === "error" ? (
+
+ <div className={`mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white shadow-sm`}>
+
+ <AlertCircle size={32} strokeWidth={2.5} />
 
  </div>
 
  ) : (
 
- <div className="w-16 h-16 flex items-center justify-center mb-6 bg-[#22C55E] rounded-full text-white shadow-sm animate-in zoom-in-50 duration-300">
+ <div className="relative mb-6 flex h-20 w-20 items-center justify-center">
 
- <CheckCircle2 size={32} strokeWidth={2.5} />
+ <Loader2 size={48} className="absolute text-[#FF7A00] animate-spin" />
+
+ <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
+
+ <Plus size={24} className="animate-pulse text-[#FF7A00]" />
+
+ </div>
 
  </div>
 
@@ -1062,15 +935,43 @@ export default function MediSagePrototype() {
 
  <h3 className={`text-[20px] font-semibold mb-2 ${TEXT_PRIMARY}`}>
 
- {uploadStep === 0 && 'Uploading securely...'}
+ {uploadPhase === "done"
 
- {uploadStep === 1 && 'Extracting data...'}
+ ? "Vault updated"
 
- {uploadStep === 2 && 'Structuring metrics...'}
+ : uploadPhase === "error"
 
- {uploadStep === 3 && 'Vault Updated'}
+ ? "Something went wrong"
+
+ : uploadPhase === "upload"
+
+ ? "Uploading securely…"
+
+ : uploadPhase === "analyze"
+
+ ? "Extracting data…"
+
+ : "Structuring & indexing…"}
 
  </h3>
+
+ <p className={`max-w-[280px] text-[14px] leading-relaxed ${TEXT_SECONDARY}`}>
+
+ {uploadPhase === "done" || uploadPhase === "error"
+
+ ? uploadOutcome?.text ?? ""
+
+ : uploadPhase === "upload"
+
+ ? "Your file is encrypted in transit and processed privately."
+
+ : uploadPhase === "analyze"
+
+ ? "Pulling text and medical context from your document."
+
+ : "Routing to the right folder and indexing for search."}
+
+ </p>
 
  </div>
 
