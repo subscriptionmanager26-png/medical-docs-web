@@ -1,5 +1,5 @@
-import { AppShell } from "./app-shell";
+import MediSagePrototype from "@/components/medisage/MediSagePrototype";
 
 export default function AppPage() {
-  return <AppShell />;
+  return <MediSagePrototype />;
 }
