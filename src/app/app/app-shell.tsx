@@ -302,8 +302,9 @@ export function AppShell() {
   }, [chatMessages, chatting, activeTab]);
 
   useEffect(() => {
-    let t0: ReturnType<typeof setTimeout> | undefined;
-    let t1: ReturnType<typeof setTimeout> | undefined;
+    // `window.setTimeout` returns `number` in DOM types; Node's `setTimeout` is `Timeout` — use DOM handle for Next/Vercel build.
+    let t0: number | undefined;
+    let t1: number | undefined;
     if (uploadOutcome?.kind === "success" && !uploading) {
       t0 = window.setTimeout(() => setSuccessHold(true), 0);
       t1 = window.setTimeout(() => setSuccessHold(false), 2600);
