@@ -45,7 +45,7 @@ export function IndexedTextPreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 p-4 pb-28 backdrop-blur-sm sm:items-center sm:pb-4"
+      className="fixed inset-0 z-[120] flex items-end justify-center bg-black/45 p-4 pb-28 backdrop-blur-sm sm:items-center sm:pb-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="indexed-preview-title"

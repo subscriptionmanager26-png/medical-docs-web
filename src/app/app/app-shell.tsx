@@ -6,7 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { VitalsTab } from "@/app/app/vitals-tab";
 import { DOCUMENT_CATEGORIES } from "@/lib/categories";
-import { VITALS_SUMMARY } from "@/lib/medisage/vitals-mock";
+import { ProfileSheet } from "@/components/medisage/profile-sheet";
 import {
   type UploadStepId,
   type UploadStreamEvent,
@@ -103,12 +103,6 @@ const SMART_TAGS = [
   "#Prescriptions",
   "#Insurance",
   "#VisitNotes",
-];
-
-const UPCOMING_ACTIONS: { id: string; label: string; due: string }[] = [
-  { id: "rx", label: "Refill prescription", due: "Tomorrow" },
-  { id: "lab", label: "Fasting lab work", due: "Nov 14" },
-  { id: "visit", label: "Annual physical", due: "Dec 2" },
 ];
 
 function markFirstIncompleteAsError(
@@ -264,7 +258,7 @@ export function AppShell() {
   const [successHold, setSuccessHold] = useState(false);
   /** Vault folder drill-down (category name) */
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
-  const [upcomingDone, setUpcomingDone] = useState<Record<string, boolean>>({});
+  const [profileOpen, setProfileOpen] = useState(false);
   const [indexedPreviewOpen, setIndexedPreviewOpen] = useState(false);
   const [indexedPreviewTitle, setIndexedPreviewTitle] = useState("");
   const [indexedPreviewLoading, setIndexedPreviewLoading] = useState(false);
@@ -790,11 +784,12 @@ export function AppShell() {
             </>
           ) : (
             <>
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div
-                  className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-medi-accent p-[2px] shadow-sm"
-                  aria-hidden
-                >
+              <button
+                type="button"
+                onClick={() => setProfileOpen(true)}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl py-0.5 text-left transition hover:bg-medi-canvas/80"
+              >
+                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-medi-accent p-[2px] shadow-sm">
                   <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
                     {avatarUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -818,7 +813,7 @@ export function AppShell() {
                     {userLabel || "Your health copilot"}
                   </p>
                 </div>
-              </div>
+              </button>
               <div className="flex shrink-0 items-center gap-2 rounded-full border border-medi-accent/25 bg-medi-accent/10 px-2.5 py-1 text-[10px] font-medium tracking-tight text-medi-accent">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-medi-accent/50 opacity-60" />
@@ -833,27 +828,6 @@ export function AppShell() {
         <main className="min-h-0 flex-1 overflow-y-auto bg-white px-4 pb-28 pt-4 tracking-tight">
           {activeTab === "home" ? (
             <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-3xl border border-medi-line bg-medi-canvas p-4 shadow-medi-card">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-medi-muted">
-                    Optimal
-                  </p>
-                  <p className="mt-2 text-3xl font-semibold tabular-nums text-medi-success">
-                    {VITALS_SUMMARY.normal}
-                  </p>
-                  <p className="mt-1 text-xs text-medi-muted">vitals in range</p>
-                </div>
-                <div className="rounded-3xl border border-medi-line bg-medi-canvas p-4 shadow-medi-card">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-medi-muted">
-                    Attention
-                  </p>
-                  <p className="mt-2 text-3xl font-semibold tabular-nums text-medi-warning">
-                    {VITALS_SUMMARY.urgent + VITALS_SUMMARY.attention}
-                  </p>
-                  <p className="mt-1 text-xs text-medi-muted">review suggested</p>
-                </div>
-              </div>
-
               <button
                 type="button"
                 onClick={openFilePicker}
@@ -869,43 +843,6 @@ export function AppShell() {
                   </p>
                 </div>
               </button>
-
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-medi-muted">
-                  Upcoming
-                </p>
-                <ul className="space-y-2">
-                  {UPCOMING_ACTIONS.map((a) => (
-                    <li
-                      key={a.id}
-                      className="flex items-center gap-3 rounded-2xl border border-medi-line bg-white px-3 py-3 shadow-medi-card"
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setUpcomingDone((d) => ({ ...d, [a.id]: !d[a.id] }))
-                        }
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-medi-line bg-medi-canvas text-medi-accent transition active:scale-[0.96]"
-                        aria-label={upcomingDone[a.id] ? "Mark not done" : "Mark done"}
-                      >
-                        {upcomingDone[a.id] ? "✓" : ""}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className={
-                            upcomingDone[a.id]
-                              ? "text-sm text-medi-muted line-through"
-                              : "text-sm font-medium text-medi-ink"
-                          }
-                        >
-                          {a.label}
-                        </p>
-                        <p className="text-xs text-medi-muted">{a.due}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
 
               <button
                 type="button"
@@ -1340,42 +1277,24 @@ export function AppShell() {
                 Consult doctor
               </button>
 
-              <div className="my-4 border-t border-medi-line" />
-
-              <div className="rounded-3xl border border-medi-line bg-medi-canvas p-5 shadow-medi-card">
-                <p className="text-sm font-semibold text-medi-ink">Account</p>
-                <p className="mt-1 text-sm text-medi-muted">{userLabel || "—"}</p>
-              </div>
-              {message ? (
-                <p className="rounded-2xl border border-medi-accent/25 bg-medi-accent/10 px-4 py-3 text-sm text-medi-ink">
-                  {message}
-                </p>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => void initDrive()}
-                disabled={initing}
-                className="w-full rounded-2xl border border-medi-line bg-white px-4 py-3 text-left text-sm font-semibold text-medi-ink shadow-medi-card transition hover:bg-medi-canvas disabled:opacity-50"
-              >
-                {initing ? "Preparing Drive…" : "Prepare Drive folders"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                className="w-full rounded-2xl bg-medi-ink px-4 py-3 text-sm font-semibold text-white transition hover:opacity-95 active:scale-[0.99]"
-              >
-                Sign out
-              </button>
-              <p className="text-center text-[11px] text-medi-muted">
-                MediSage does not replace a clinician. AI answers may be incomplete.
-              </p>
             </div>
           ) : null}
         </main>
 
+        <ProfileSheet
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          userLabel={userLabel}
+          avatarUrl={avatarUrl}
+          message={message}
+          initing={initing}
+          onInitDrive={() => void initDrive()}
+          onSignOut={() => void signOut()}
+        />
+
         {indexedPreviewOpen ? (
           <div
-            className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 p-4 pb-28 backdrop-blur-sm md:items-center md:pb-4"
+            className="fixed inset-0 z-[120] flex items-end justify-center bg-black/45 p-4 pb-28 backdrop-blur-sm md:items-center md:pb-4"
             role="dialog"
             aria-modal="true"
             aria-labelledby="indexed-preview-title"

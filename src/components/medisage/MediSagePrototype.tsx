@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -16,15 +16,14 @@ import {
   Loader2,
   Microscope,
   ChevronRight,
-  Droplets,
   AlertCircle,
   CalendarPlus,
   ShoppingBag,
   ChevronLeft,
 } from "lucide-react";
 import { VitalsTab } from "@/app/app/vitals-tab";
-import { VITALS_SUMMARY } from "@/lib/medisage/vitals-mock";
 import { IndexedTextPreviewModal } from "@/components/medisage/indexed-text-preview-modal";
+import { ProfileSheet } from "@/components/medisage/profile-sheet";
 import { useMedisagePrototypeLogic } from "@/hooks/use-medisage-prototype-logic";
 
 // --- DESIGN SYSTEM CONSTANTS (Clean + Calm + Modern) ---
@@ -46,7 +45,6 @@ const TEXT_SECONDARY = "text-[#6B7280]";
 export default function MediSagePrototype() {
  const {
  activeTab,
- setActiveTab,
  navToTab,
  loading,
  vaultFiles,
@@ -84,6 +82,8 @@ export default function MediSagePrototype() {
  chatEndRef,
  } = useMedisagePrototypeLogic();
 
+ const [profileOpen, setProfileOpen] = useState(false);
+
  const getHeaderContent = () => {
 
  if (activeTab === 'home') return { title: 'MediSage', subtitle: `Good morning, ${greetingName}`, showAvatar: true };
@@ -96,7 +96,7 @@ export default function MediSagePrototype() {
 
  }
 
- if (activeTab === 'vitals') return { title: 'Health Vitals', subtitle: 'Track your biomarkers' };
+ if (activeTab === 'vitals') return { title: 'Health Vitals', subtitle: 'From your health records' };
 
  if (activeTab === 'services') return { title: 'Health Services', subtitle: 'Bookings & Medicine' };
 
@@ -151,6 +151,17 @@ export default function MediSagePrototype() {
  onClose={closeIndexedPreview}
  />
 
+ <ProfileSheet
+ open={profileOpen}
+ onClose={() => setProfileOpen(false)}
+ userLabel={userLabel}
+ avatarUrl={avatarUrl}
+ message={message}
+ initing={initing}
+ onInitDrive={() => void initDrive()}
+ onSignOut={() => void signOut()}
+ />
+
  {/* Header */}
 
  <header className={`px-5 pt-12 pb-4 flex items-center justify-between sticky top-0 z-10 ${APP_BG}/95 backdrop-blur-md border-b border-[#E5E7EB]`}>
@@ -159,7 +170,12 @@ export default function MediSagePrototype() {
 
  {headerInfo.showAvatar && (
 
- <div className={`w-10 h-10 ${BTN_SECONDARY} !rounded-full overflow-hidden flex items-center justify-center`}>
+ <button
+ type="button"
+ onClick={() => setProfileOpen(true)}
+ className={`w-10 h-10 ${BTN_SECONDARY} !rounded-full overflow-hidden flex shrink-0 items-center justify-center`}
+ aria-label="Open profile"
+ >
 
  {avatarUrl ? (
  // eslint-disable-next-line @next/next/no-img-element
@@ -170,7 +186,7 @@ export default function MediSagePrototype() {
  </span>
  )}
 
- </div>
+ </button>
 
  )}
 
@@ -216,36 +232,6 @@ export default function MediSagePrototype() {
 
  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
 
- {/* Markers Summary */}
-
- <div className={`${CARD_SURFACE} p-5`}>
-
- <h3 className={`font-semibold ${TEXT_PRIMARY} text-[16px] mb-4`}>Health Markers Summary</h3>
-
- <div className="flex gap-4">
-
- <div className={`flex-1 ${INSET_SURFACE} p-4 flex flex-col items-center justify-center`}>
-
- <span className="text-[24px] font-semibold text-[#22C55E]">{VITALS_SUMMARY.normal}</span>
-
- <span className={`text-[12px] font-medium ${TEXT_SECONDARY} mt-1`}>Optimal</span>
-
- </div>
-
- <div className={`flex-1 ${INSET_SURFACE} p-4 flex flex-col items-center justify-center`}>
-
- <span className="text-[24px] font-semibold text-[#F59E0B]">
- {VITALS_SUMMARY.urgent + VITALS_SUMMARY.attention}
- </span>
-
- <span className={`text-[12px] font-medium ${TEXT_SECONDARY} mt-1`}>Attention</span>
-
- </div>
-
- </div>
-
- </div>
-
  {/* Quick Upload Action */}
 
  <div
@@ -283,60 +269,6 @@ export default function MediSagePrototype() {
  </div>
 
  <ChevronRight size={20} className={TEXT_SECONDARY} />
-
- </div>
-
- {/* Upcoming Actions */}
-
- <div>
-
- <h3 className={`font-semibold ${TEXT_PRIMARY} text-[20px] mb-4 pl-1`}>Upcoming Actions</h3>
-
- <div className="space-y-3">
-
- <div className={`${CARD_SURFACE} p-4 flex items-center gap-4`}>
-
- <div className={`w-12 h-12 flex items-center justify-center ${INSET_SURFACE}`}>
-
- <AlertCircle size={20} className="text-[#F59E0B]" />
-
- </div>
-
- <div className="flex-1">
-
- <h4 className={`font-medium ${TEXT_PRIMARY} text-[16px]`}>Take Vitamin D</h4>
-
- <p className={`text-[14px] ${TEXT_SECONDARY} mt-0.5`}>Daily • With Breakfast</p>
-
- </div>
-
- <button className={`w-8 h-8 flex items-center justify-center rounded-full border border-[#E5E7EB] bg-white`}>
-
- <CheckCircle2 size={18} className="text-[#E5E7EB]" />
-
- </button>
-
- </div>
-
- <div className={`${CARD_SURFACE} p-4 flex items-center gap-4`}>
-
- <div className={`w-12 h-12 flex items-center justify-center ${INSET_SURFACE}`}>
-
- <Droplets size={20} className={TEXT_SECONDARY} />
-
- </div>
-
- <div className="flex-1">
-
- <h4 className={`font-medium ${TEXT_PRIMARY} text-[16px]`}>Fasting Blood Sugar</h4>
-
- <p className={`text-[14px] ${TEXT_SECONDARY} mt-0.5`}>Tomorrow • 8:00 AM</p>
-
- </div>
-
- </div>
-
- </div>
 
  </div>
 
@@ -808,62 +740,6 @@ export default function MediSagePrototype() {
  </div>
 
  </div>
-
- <div className={`my-4 h-px w-full bg-[#E5E7EB]`} />
-
- <div className={`${CARD_SURFACE} p-5`}>
-
- <h4 className={`font-semibold ${TEXT_PRIMARY} text-[16px]`}>Account</h4>
-
- <p className={`mt-1 text-[14px] ${TEXT_SECONDARY}`}>{userLabel || "—"}</p>
-
- </div>
-
- {message ? (
-
- <p className={`rounded-[16px] border border-[#FF7A00]/25 bg-[#FF7A00]/10 px-4 py-3 text-[14px] ${TEXT_PRIMARY}`}>
-
- {message}
-
- </p>
-
- ) : null}
-
- <button
-
- type="button"
-
- onClick={() => void initDrive()}
-
- disabled={initing}
-
- className={`w-full ${CARD_SURFACE} p-4 text-left text-[16px] font-semibold ${TEXT_PRIMARY} transition active:scale-[0.98] disabled:opacity-50`}
-
- >
-
- {initing ? "Preparing Drive…" : "Prepare Google Drive folders"}
-
- </button>
-
- <button
-
- type="button"
-
- onClick={() => void signOut()}
-
- className="w-full rounded-[16px] bg-[#1A1A1A] px-4 py-3.5 text-[16px] font-semibold text-white transition hover:opacity-95 active:scale-[0.99]"
-
- >
-
- Sign out
-
- </button>
-
- <p className={`text-center text-[11px] ${TEXT_SECONDARY}`}>
-
- MediSage does not replace a clinician. AI answers may be incomplete.
-
- </p>
 
  </div>
 
