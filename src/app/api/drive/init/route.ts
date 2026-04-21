@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { ensureDriveStructure, formatGoogleDriveError } from "@/lib/google-drive";
+import { formatGoogleDriveError } from "@/lib/google-drive";
+import { syncDriveVaultForUser } from "@/lib/user-drive-sync";
 
 export const runtime = "nodejs";
 
@@ -31,25 +32,12 @@ export async function POST() {
     );
   }
 
-  const { data: roots } = await supabase
-    .from("drive_roots")
-    .select("root_folder_id, category_folder_ids")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
   try {
-    const structure = await ensureDriveStructure(cred.refresh_token, roots);
-
-    await supabase.from("drive_roots").upsert(
-      {
-        user_id: user.id,
-        root_folder_id: structure.root_folder_id,
-        category_folder_ids: structure.category_folder_ids,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" },
+    const structure = await syncDriveVaultForUser(
+      supabase,
+      user.id,
+      cred.refresh_token,
     );
-
     return NextResponse.json({ ok: true, ...structure });
   } catch (err) {
     const message = formatGoogleDriveError(err);

@@ -45,8 +45,8 @@ export function LoginForm() {
         {loading ? "Redirecting…" : "Continue with Google"}
       </button>
       <p className="text-center text-xs text-medi-muted">
-        You will be asked to sign in and allow access to Google Drive files that
-        this app creates or opens.
+        After you allow Drive access, your MediSage vault folders are created
+        automatically—no extra setup step.
       </p>
     </div>
   );

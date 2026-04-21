@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { syncDriveVaultForUser } from "@/lib/user-drive-sync";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -31,6 +32,15 @@ export async function GET(request: NextRequest) {
       },
       { onConflict: "user_id" },
     );
+
+    try {
+      await syncDriveVaultForUser(supabase, session.user.id, refresh);
+    } catch (err) {
+      console.error("[auth/callback] Drive vault sync failed", {
+        userId: session.user.id,
+        err,
+      });
+    }
   }
 
   const forwardedHost = request.headers.get("x-forwarded-host");

@@ -54,9 +54,9 @@ After deploy, update Supabase **Site URL** and **Redirect URLs** to match the li
 ## 4. First-time user flow
 
 1. User opens the site → **Sign in with Google** (Drive scope + offline access).
-2. After redirect, the app stores the Google **refresh token** in `google_credentials` (when Google returns one).
-3. In the app, click **Prepare Drive folders** once to create the root folder and category folders in Drive.
-4. Upload PDFs/text; the app classifies them and uploads into the matching folder, then **extracts text** (PDFs and common images go through the **OpenAI Responses API**: file is uploaded to OpenAI with `purpose: user_data`, then parsed with `input_file` / `input_image`; it then tries your **fallback model**, default **`gpt-4o`**, if the primary model returns empty—important for scans / photo PDFs). Plain text is read locally. If all OpenAI parse attempts fail for a PDF, the server falls back to `pdf-parse`. Env: `OPENAI_DOCUMENT_PARSE_MODEL`, `OPENAI_DOCUMENT_PARSE_FALLBACK_MODEL`.
+2. After redirect, the app stores the Google **refresh token** in `google_credentials` (when Google returns one), then **creates the Drive vault folder tree** automatically (`/auth/callback` calls the same sync as uploads). No manual “create folders” step.
+3. Upload PDFs/text; the app classifies them and uploads into the matching folder, then **extracts text** (PDFs and common images go through the **OpenAI Responses API**: file is uploaded to OpenAI with `purpose: user_data`, then parsed with `input_file` / `input_image`; it then tries your **fallback model**, default **`gpt-4o`**, if the primary model returns empty—important for scans / photo PDFs). Plain text is read locally. If all OpenAI parse attempts fail for a PDF, the server falls back to `pdf-parse`. Env: `OPENAI_DOCUMENT_PARSE_MODEL`, `OPENAI_DOCUMENT_PARSE_FALLBACK_MODEL`.  
+   **Existing users** without valid folder rows: the first upload (or **Profile → Refresh Drive vault folders**) repairs or recreates folders in Drive.
 
 ## Vector storage and per-user isolation
 
@@ -74,7 +74,7 @@ Vercel logs often show **`POST oauth2.googleapis.com/token` → 200** (refresh w
 
 Typical causes:
 
-1. **Stale vault folder IDs** — We store `drive_roots` (root + category folder IDs) in Postgres. If the user **deleted or moved** those folders in Drive, the app still trusted the old IDs until the next successful folder repair. **Fix:** open **Profile → “Prepare Google Drive folders”** once (or upload again after deploy): the server now **re-checks** that stored folder IDs still exist in Drive and **recreates** the vault tree when they do not.
+1. **Stale vault folder IDs** — We store `drive_roots` (root + category folder IDs) in Postgres. If the user **deleted or moved** those folders in Drive, uploads used to trust stale IDs. **Fix:** any upload runs **`ensureDriveStructure`**, which **re-checks** IDs and recreates missing folders; or use **Profile → “Refresh Drive vault folders”** (same sync as sign-in).
 2. **OAuth consent / `drive.file` scope** — The app needs **`https://www.googleapis.com/auth/drive.file`**. If that user never completed consent (or used an old login without Drive), uploads can fail. **Fix:** sign out, sign in with **Continue** on Google’s Drive permission screen.
 3. **Google Workspace policy** — An admin can block third-party Drive access or restrict creating files; that surfaces as **403** from the Drive API.
 4. **OAuth app in “Testing”** — Only **test users** listed on the consent screen get full access; others may hit odd failures. Add the user as a test user or publish the app.

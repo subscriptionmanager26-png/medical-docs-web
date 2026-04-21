@@ -264,10 +264,10 @@ export function useMedisagePrototypeLogic() {
     const data = (await res.json()) as { error?: string };
     setIniting(false);
     if (!res.ok) {
-      setMessage(data.error ?? "Could not initialize Drive folders.");
+      setMessage(data.error ?? "Could not sync Drive vault folders.");
       return;
     }
-    setMessage("Drive folders are ready.");
+    setMessage("Drive vault folders are up to date.");
   }
 
   const processUploadResponse = useCallback(

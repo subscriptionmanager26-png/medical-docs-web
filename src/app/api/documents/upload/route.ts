@@ -247,7 +247,7 @@ export async function POST(request: NextRequest) {
       ok: false,
       error:
         message.includes("403") || message.toLowerCase().includes("forbidden")
-          ? `${message} If this persists, open Profile → “Prepare Google Drive folders” to refresh vault folders, or sign out and sign in with Google again (Drive access).`
+          ? `${message} Try Profile → “Refresh Drive vault folders”, or sign out and sign in with Google again (Drive access). Uploads also repair missing folders automatically.`
           : message,
     });
     return NextResponse.json({ events }, { status: 500 });

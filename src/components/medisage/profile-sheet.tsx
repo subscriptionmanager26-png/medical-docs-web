@@ -46,7 +46,7 @@ export function ProfileSheet({
               Profile
             </p>
             <p className="mt-0.5 truncate text-xs text-medi-muted">
-              Account and vault setup
+              Account and Drive vault
             </p>
           </div>
           <button
@@ -81,7 +81,10 @@ export function ProfileSheet({
               <p className="truncate text-sm font-semibold text-medi-ink">
                 {userLabel || "Signed in"}
               </p>
-              <p className="mt-0.5 text-xs text-medi-muted">MediSage account</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-medi-muted">
+                Folders sync when you sign in. Use refresh if you moved or deleted
+                them in Drive.
+              </p>
             </div>
           </div>
 
@@ -97,7 +100,7 @@ export function ProfileSheet({
             disabled={initing}
             className="w-full rounded-2xl border border-medi-line bg-white px-4 py-3 text-left text-sm font-semibold text-medi-ink shadow-medi-card transition hover:bg-medi-canvas disabled:opacity-50"
           >
-            {initing ? "Preparing Drive…" : "Prepare Google Drive folders"}
+            {initing ? "Syncing…" : "Refresh Drive vault folders"}
           </button>
 
           <button
