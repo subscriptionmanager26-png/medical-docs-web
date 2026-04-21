@@ -79,7 +79,18 @@ Typical causes:
 3. **Google Workspace policy** — An admin can block third-party Drive access or restrict creating files; that surfaces as **403** from the Drive API.
 4. **OAuth app in “Testing”** — Only **test users** listed on the consent screen get full access; others may hit odd failures. Add the user as a test user or publish the app.
 
-Server logs now include **`[upload] failed`** with the Google error body to distinguish these cases.
+### “Request had insufficient authentication scopes” (403, `insufficientPermissions`)
+
+The Google **refresh token** on file was issued **without** `https://www.googleapis.com/auth/drive.file`, so every Drive `files.create` fails even though token refresh returns 200.
+
+**Fix for that user:** sign out of MediSage → sign in with Google again → accept **Drive** on the consent screen. If Google does not show Drive, remove MediSage under **Google Account → Security → Third-party apps with account access**, then sign in again (forces a new refresh token).
+
+**Project checks:**
+
+1. **Google Cloud → OAuth consent screen → Scopes** — Add **`…/auth/drive.file`** (and the usual `openid`, `email`, `profile` if you manage the screen manually). Without `drive.file` on the consent screen, Google will not grant it.
+2. **Login request** — The app requests `openid`, `email`, `profile`, and `drive.file` together so the consent screen lists Drive next to sign-in scopes.
+
+Server logs include **`[upload] failed`** with the Google error body; the API returns a clearer message when this scope error is detected.
 
 ## 5. Security and compliance
 

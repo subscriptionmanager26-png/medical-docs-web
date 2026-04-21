@@ -16,7 +16,12 @@ export function LoginForm() {
       provider: "google",
       options: {
         redirectTo: `${origin}/auth/callback?next=/app`,
-        scopes: "https://www.googleapis.com/auth/drive.file",
+        scopes: [
+          "openid",
+          "email",
+          "profile",
+          "https://www.googleapis.com/auth/drive.file",
+        ].join(" "),
         queryParams: {
           access_type: "offline",
           prompt: "consent",

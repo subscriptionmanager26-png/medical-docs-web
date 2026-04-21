@@ -10,6 +10,8 @@ import {
 import {
   ensureDriveStructure,
   formatGoogleDriveError,
+  insufficientDriveScopeUserMessage,
+  isInsufficientDriveScopeError,
   uploadToDriveFolder,
 } from "@/lib/google-drive";
 import type { DocumentCategory } from "@/lib/categories";
@@ -242,12 +244,14 @@ export async function POST(request: NextRequest) {
       google: (err as { response?: { status?: number; data?: unknown } })
         ?.response?.data,
     });
+    const scopeIssue = isInsufficientDriveScopeError(err);
     push({
       type: "result",
       ok: false,
-      error:
-        message.includes("403") || message.toLowerCase().includes("forbidden")
-          ? `${message} Try Profile → “Refresh Drive vault folders”, or sign out and sign in with Google again (Drive access). Uploads also repair missing folders automatically.`
+      error: scopeIssue
+        ? insufficientDriveScopeUserMessage()
+        : message.includes("403") || message.toLowerCase().includes("forbidden")
+          ? `${message} Try Profile → “Refresh Drive vault folders”, or sign out and sign in with Google again. Uploads also repair missing folders when IDs are stale.`
           : message,
     });
     return NextResponse.json({ events }, { status: 500 });

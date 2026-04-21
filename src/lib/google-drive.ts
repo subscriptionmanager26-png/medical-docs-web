@@ -31,6 +31,23 @@ export function formatGoogleDriveError(err: unknown): string {
   return err.message;
 }
 
+/** True when the Drive API rejected the token for missing OAuth scopes. */
+export function isInsufficientDriveScopeError(err: unknown): boolean {
+  return formatGoogleDriveError(err)
+    .toLowerCase()
+    .includes("insufficient authentication scopes");
+}
+
+/** Short copy for upload / UI when Google did not grant drive.file on the refresh token. */
+export function insufficientDriveScopeUserMessage(): string {
+  return (
+    "Google has not granted this app permission to create files in your Drive for this login. " +
+    "Sign out of MediSage, sign in with Google again, and choose **Allow** when asked for Google Drive access. " +
+    "If it still fails, open Google Account → Security → “Third-party apps with account access”, remove MediSage, then sign in once more. " +
+    "In Google Cloud Console, ensure the OAuth consent screen lists the scope `…/auth/drive.file`."
+  );
+}
+
 export function getDriveClient(refreshToken: string) {
   const oauth2 = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
