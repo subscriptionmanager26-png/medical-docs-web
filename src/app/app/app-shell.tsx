@@ -6,7 +6,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { DOCUMENT_CATEGORIES } from "@/lib/categories";
 import {
-  UPLOAD_STEP_LABELS,
   type UploadStepId,
   type UploadStreamEvent,
 } from "@/lib/upload-stream-protocol";
@@ -122,7 +121,7 @@ function NavIconHome({ active }: { active: boolean }) {
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      className={active ? "text-white" : "text-zinc-400"}
+      className={active ? "text-medi-accent" : "text-medi-muted"}
       aria-hidden
     >
       <path
@@ -142,7 +141,7 @@ function NavIconVault({ active }: { active: boolean }) {
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      className={active ? "text-white" : "text-zinc-400"}
+      className={active ? "text-medi-accent" : "text-medi-muted"}
       aria-hidden
     >
       <rect
@@ -170,7 +169,7 @@ function NavIconAsk({ active }: { active: boolean }) {
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      className={active ? "text-white" : "text-zinc-400"}
+      className={active ? "text-medi-accent" : "text-medi-muted"}
       aria-hidden
     >
       <path
@@ -191,7 +190,7 @@ function NavIconProfile({ active }: { active: boolean }) {
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      className={active ? "text-white" : "text-zinc-400"}
+      className={active ? "text-medi-accent" : "text-medi-muted"}
       aria-hidden
     >
       <circle cx="12" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.6" />
@@ -214,7 +213,7 @@ export function AppShell() {
     Record<UploadStepId, UploadStepUi> | null
   >(null);
   const [uploadOutcome, setUploadOutcome] = useState<UploadOutcome | null>(null);
-  const [folderStepDetail, setFolderStepDetail] = useState<string | null>(null);
+  const [, setFolderStepDetail] = useState<string | null>(null);
   const [indexingFollowUp, setIndexingFollowUp] = useState(false);
   const [initing, setIniting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -303,13 +302,18 @@ export function AppShell() {
   }, [chatMessages, chatting, activeTab]);
 
   useEffect(() => {
+    let t0: ReturnType<typeof setTimeout> | undefined;
+    let t1: ReturnType<typeof setTimeout> | undefined;
     if (uploadOutcome?.kind === "success" && !uploading) {
-      setSuccessHold(true);
-      const t = window.setTimeout(() => setSuccessHold(false), 2600);
-      return () => window.clearTimeout(t);
+      t0 = window.setTimeout(() => setSuccessHold(true), 0);
+      t1 = window.setTimeout(() => setSuccessHold(false), 2600);
+    } else {
+      t0 = window.setTimeout(() => setSuccessHold(false), 0);
     }
-    setSuccessHold(false);
-    return undefined;
+    return () => {
+      if (t0 !== undefined) window.clearTimeout(t0);
+      if (t1 !== undefined) window.clearTimeout(t1);
+    };
   }, [uploadOutcome, uploading]);
 
   const overlayOpen = uploading || successHold;
@@ -585,12 +589,8 @@ export function AppShell() {
       : "Your vault has indexed material ready for Copilot.";
 
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-violet-100/70 via-[#F9FAFB] to-teal-50/50 md:flex md:justify-center md:py-10 md:px-4">
-      <div
-        className={
-          "relative mx-auto flex min-h-dvh w-full max-w-[100vw] flex-col overflow-hidden bg-[#F9FAFB] shadow-[0_8px_30px_rgb(0,0,0,0.08)] md:min-h-[720px] md:max-w-[400px] md:rounded-[2.75rem] md:border md:border-white/70 md:bg-white/55 md:backdrop-blur-xl"
-        }
-      >
+    <div className="min-h-dvh bg-medi-canvas md:flex md:justify-center md:py-10 md:px-4">
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-[100vw] flex-col overflow-hidden bg-white shadow-medi-float md:min-h-[720px] md:max-w-[400px] md:rounded-3xl md:border md:border-medi-line md:shadow-medi-card">
         <input
           ref={fileInputRef}
           type="file"
@@ -612,7 +612,7 @@ export function AppShell() {
             aria-live="polite"
           >
             {phase === "done" ? (
-              <div className="animate-medi-success-pop text-6xl" aria-hidden>
+              <div className="animate-medi-success-pop text-6xl text-medi-success" aria-hidden>
                 ✓
               </div>
             ) : phase === "error" ? (
@@ -621,7 +621,7 @@ export function AppShell() {
               </div>
             ) : (
               <div className="relative mb-6 flex h-20 w-20 items-center justify-center">
-                <span className="absolute inset-0 rounded-full bg-violet-500/30 blur-xl" />
+                <span className="absolute inset-0 rounded-full bg-medi-accent/25 blur-xl" />
                 {phase === "upload" ? (
                   <span className="text-4xl" aria-hidden>
                     ☁️
@@ -667,10 +667,10 @@ export function AppShell() {
           </div>
         ) : null}
 
-        <header className="sticky top-0 z-40 flex shrink-0 items-center justify-between gap-3 border-b border-white/40 bg-white/80 px-4 py-3 backdrop-blur-xl">
+        <header className="sticky top-0 z-40 flex shrink-0 items-center justify-between gap-3 border-b border-medi-line bg-white/95 px-4 py-3 backdrop-blur-xl">
           <div className="flex min-w-0 items-center gap-3">
             <div
-              className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 p-[2px] shadow-sm"
+              className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-medi-accent p-[2px] shadow-sm"
               aria-hidden
             >
               <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
@@ -682,51 +682,51 @@ export function AppShell() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="text-sm font-semibold text-violet-700">
+                  <span className="text-sm font-semibold text-medi-accent">
                     {(userLabel || "M").slice(0, 1).toUpperCase()}
                   </span>
                 )}
               </div>
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold tracking-tight text-gray-900">
+              <p className="truncate text-sm font-semibold tracking-tight text-medi-ink">
                 MediSage
               </p>
-              <p className="truncate text-xs text-gray-500">
+              <p className="truncate text-xs text-medi-muted">
                 {userLabel || "Your health copilot"}
               </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/90 px-2.5 py-1 text-[10px] font-medium tracking-tight text-emerald-800">
+          <div className="flex shrink-0 items-center gap-2 rounded-full border border-medi-accent/25 bg-medi-accent/10 px-2.5 py-1 text-[10px] font-medium tracking-tight text-medi-accent">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-medi-accent/50 opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-medi-accent" />
             </span>
             Copilot active
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-28 pt-4 tracking-tight">
+        <main className="min-h-0 flex-1 overflow-y-auto bg-white px-4 pb-28 pt-4 tracking-tight">
           {activeTab === "home" ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setActiveTab("ask")}
-                  className="relative col-span-2 overflow-hidden rounded-3xl bg-gray-900 p-5 text-left text-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-1 ring-violet-500/40 transition active:scale-[0.99]"
+                  className="relative col-span-2 overflow-hidden rounded-3xl bg-medi-ink p-5 text-left text-white shadow-medi-float ring-1 ring-medi-line transition active:scale-[0.99]"
                 >
-                  <span className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-violet-500/40 blur-2xl" />
-                  <p className="text-xs font-semibold uppercase tracking-wide text-violet-200/90">
+                  <span className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-medi-accent/35 blur-2xl" />
+                  <p className="text-xs font-semibold uppercase tracking-wide text-medi-accent">
                     Ask your data
                   </p>
                   <p className="mt-2 text-xl font-semibold leading-snug">
                     MediSage Copilot
                   </p>
-                  <p className="mt-2 text-sm text-zinc-300">
+                  <p className="mt-2 text-sm text-white/75">
                     Search across labs, scans, and notes—instant answers with
                     citations.
                   </p>
-                  <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white">
+                  <span className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-medi-accent px-3 py-1.5 text-xs font-medium text-white transition hover:bg-medi-accent-hover">
                     Open chat
                     <span aria-hidden>→</span>
                   </span>
@@ -735,32 +735,32 @@ export function AppShell() {
                 <button
                   type="button"
                   onClick={openFilePicker}
-                  className="flex aspect-square flex-col justify-between rounded-3xl border border-gray-200/80 bg-white p-4 text-left shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition hover:border-violet-200 active:scale-[0.98]"
+                  className="flex aspect-square flex-col justify-between rounded-3xl border border-medi-line bg-white p-4 text-left shadow-medi-card transition hover:border-medi-accent/30 active:scale-[0.98]"
                 >
                   <span className="text-2xl" aria-hidden>
                     ⬆️
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">Upload</p>
-                    <p className="mt-1 text-xs text-gray-500">PDF or text</p>
+                    <p className="text-sm font-semibold text-medi-ink">Upload</p>
+                    <p className="mt-1 text-xs text-medi-muted">PDF or text</p>
                   </div>
                 </button>
 
-                <div className="flex aspect-square flex-col justify-between rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 shadow-[0_8px_30px_rgb(0,0,0,0.05)]">
+                <div className="flex aspect-square flex-col justify-between rounded-3xl border border-medi-line bg-medi-canvas p-4 shadow-medi-card">
                   <span className="text-2xl" aria-hidden>
                     ✨
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-emerald-900">
+                    <p className="text-sm font-semibold text-medi-ink">
                       {healthLine}
                     </p>
-                    <p className="mt-1 text-xs text-emerald-800/80">{healthSub}</p>
+                    <p className="mt-1 text-xs text-medi-muted">{healthSub}</p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-medi-muted">
                   Library
                 </p>
                 <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -772,7 +772,7 @@ export function AppShell() {
                         setVaultCategory(p.category);
                         setActiveTab("vault");
                       }}
-                      className="shrink-0 rounded-full bg-violet-100/60 px-4 py-2 text-xs font-semibold text-violet-900 ring-1 ring-violet-200/60"
+                      className="shrink-0 rounded-full bg-medi-accent/10 px-4 py-2 text-xs font-semibold text-medi-ink ring-1 ring-medi-accent/20 transition hover:bg-medi-accent/15"
                     >
                       {p.label}
                     </button>
@@ -781,13 +781,13 @@ export function AppShell() {
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-medi-muted">
                   Recent activity
                 </p>
                 {loading ? (
-                  <p className="text-sm text-gray-500">Loading…</p>
+                  <p className="text-sm text-medi-muted">Loading…</p>
                 ) : recentDocs.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-gray-200 bg-white/60 px-4 py-6 text-center text-sm text-gray-500">
+                  <p className="rounded-2xl border border-dashed border-medi-line bg-medi-canvas px-4 py-6 text-center text-sm text-medi-muted">
                     No documents yet. Tap Upload to add your first file.
                   </p>
                 ) : (
@@ -795,31 +795,31 @@ export function AppShell() {
                     {recentDocs.map((d) => (
                       <li
                         key={d.id}
-                        className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white/90 px-3 py-3 shadow-sm"
+                        className="flex items-center gap-3 rounded-2xl border border-medi-line bg-white px-3 py-3 shadow-medi-card"
                       >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-900 text-[10px] font-bold text-white">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-medi-ink text-[10px] font-bold text-white">
                           {docIcon(d.mime_type)}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-gray-900">
+                          <p className="truncate text-sm font-semibold text-medi-ink">
                             {d.title}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-medi-muted">
                             {new Date(d.created_at).toLocaleDateString()} ·{" "}
-                            <span className="text-violet-700">{d.category}</span>
+                            <span className="text-medi-accent">{d.category}</span>
                           </p>
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-1">
                           <button
                             type="button"
                             onClick={() => void openIndexedPreview(d.id, d.title)}
-                            className="text-xs font-semibold text-gray-600 hover:text-violet-800"
+                            className="text-xs font-semibold text-medi-muted hover:text-medi-accent"
                           >
                             Indexed text
                           </button>
                           <Link
                             href={`/api/drive/download/${d.drive_file_id}`}
-                            className="text-xs font-semibold text-violet-700 hover:underline"
+                            className="text-xs font-semibold text-medi-accent hover:underline"
                           >
                             Open file
                           </Link>
@@ -836,8 +836,8 @@ export function AppShell() {
           {activeTab === "vault" ? (
             <div className="space-y-6">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Data vault</h2>
-                <p className="mt-1 text-sm text-gray-500">
+                <h2 className="text-lg font-semibold text-medi-ink">Data vault</h2>
+                <p className="mt-1 text-sm text-medi-muted">
                   Organized copies in your Drive, searchable here.
                 </p>
               </div>
@@ -855,29 +855,29 @@ export function AppShell() {
                       }
                       className={
                         active
-                          ? "rounded-3xl border-2 border-violet-500 bg-violet-50/90 p-4 text-left shadow-md"
-                          : "rounded-3xl border border-gray-100 bg-white/90 p-4 text-left shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
+                          ? "rounded-3xl border-2 border-medi-accent bg-medi-accent/5 p-4 text-left shadow-medi-card"
+                          : "rounded-3xl border border-medi-line bg-white p-4 text-left shadow-medi-card"
                       }
                     >
-                      <p className="text-xs font-medium text-gray-500">{cat}</p>
-                      <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
+                      <p className="text-xs font-medium text-medi-muted">{cat}</p>
+                      <p className="mt-2 text-3xl font-semibold tabular-nums text-medi-ink">
                         {count}
                       </p>
-                      <p className="mt-1 text-[11px] text-gray-500">documents</p>
+                      <p className="mt-1 text-[11px] text-medi-muted">documents</p>
                     </button>
                   );
                 })}
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-medi-muted">
                   Smart tags
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {SMART_TAGS.map((t) => (
                     <span
                       key={t}
-                      className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700"
+                      className="rounded-full bg-medi-canvas px-3 py-1.5 text-xs font-medium text-medi-ink ring-1 ring-medi-line"
                     >
                       {t}
                     </span>
@@ -887,13 +887,13 @@ export function AppShell() {
 
               <div>
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-medi-muted">
                     {vaultCategory ? `${vaultCategory}` : "All documents"}
                   </p>
                   {vaultCategory ? (
                     <button
                       type="button"
-                      className="text-xs font-semibold text-violet-700"
+                      className="text-xs font-semibold text-medi-accent"
                       onClick={() => setVaultCategory(null)}
                     >
                       Clear filter
@@ -901,7 +901,7 @@ export function AppShell() {
                   ) : null}
                 </div>
                 {loading ? (
-                  <p className="text-sm text-gray-500">Loading…</p>
+                  <p className="text-sm text-medi-muted">Loading…</p>
                 ) : (
                   <ul className="space-y-2">
                     {docs
@@ -911,13 +911,13 @@ export function AppShell() {
                       .map((d) => (
                         <li
                           key={d.id}
-                          className="flex items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white/90 px-3 py-3"
+                          className="flex items-center justify-between gap-3 rounded-2xl border border-medi-line bg-white px-3 py-3 shadow-medi-card"
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-gray-900">
+                            <p className="truncate text-sm font-semibold text-medi-ink">
                               {d.title}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-medi-muted">
                               {d.category} ·{" "}
                               {new Date(d.created_at).toLocaleDateString()}
                             </p>
@@ -926,13 +926,13 @@ export function AppShell() {
                             <button
                               type="button"
                               onClick={() => void openIndexedPreview(d.id, d.title)}
-                              className="text-xs font-semibold text-gray-600 hover:text-violet-800"
+                              className="text-xs font-semibold text-medi-muted hover:text-medi-accent"
                             >
                               Indexed text
                             </button>
                             <Link
                               href={`/api/drive/download/${d.drive_file_id}`}
-                              className="text-xs font-semibold text-violet-700 hover:underline"
+                              className="text-xs font-semibold text-medi-accent hover:underline"
                             >
                               Download
                             </Link>
@@ -947,22 +947,22 @@ export function AppShell() {
 
           {activeTab === "ask" ? (
             <div className="flex min-h-[calc(100dvh-220px)] flex-col">
-              <div className="mb-3 flex items-center justify-between rounded-2xl border border-gray-100 bg-white/90 px-3 py-2.5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between rounded-2xl border border-medi-line bg-medi-canvas px-3 py-2.5 shadow-medi-card">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-medi-ink">
                     MediSage Copilot
                   </p>
-                  <p className="text-xs text-gray-500">Answers from your uploads only</p>
+                  <p className="text-xs text-medi-muted">Answers from your uploads only</p>
                 </div>
-                <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="flex items-center gap-1.5 rounded-full bg-medi-success/15 px-2 py-1 text-[10px] font-semibold text-medi-success ring-1 ring-medi-success/25">
+                  <span className="h-1.5 w-1.5 rounded-full bg-medi-success" />
                   Online
                 </span>
               </div>
 
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                 {chatMessages.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-gray-200 bg-white/60 px-4 py-6 text-center text-sm text-gray-500">
+                  <p className="rounded-2xl border border-dashed border-medi-line bg-medi-canvas px-4 py-6 text-center text-sm text-medi-muted">
                     Ask anything about the text we indexed from your documents.
                     Not medical advice.
                   </p>
@@ -971,14 +971,14 @@ export function AppShell() {
                     msg.role === "user" ? (
                       <div
                         key={i}
-                        className="ml-6 rounded-2xl bg-gray-900 px-4 py-3 text-sm leading-relaxed text-white shadow-md"
+                        className="ml-6 rounded-2xl bg-medi-ink px-4 py-3 text-sm leading-relaxed text-white shadow-md"
                       >
                         {msg.content}
                       </div>
                     ) : (
                       <div
                         key={i}
-                        className="mr-4 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm leading-relaxed text-gray-800 shadow-sm"
+                        className="mr-4 rounded-2xl border border-medi-line bg-white px-4 py-3 text-sm leading-relaxed text-medi-ink shadow-medi-card"
                       >
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                         {msg.citations && msg.citations.length > 0 ? (
@@ -990,7 +990,7 @@ export function AppShell() {
                               >
                                 <Link
                                   href={`/api/drive/download/${c.driveFileId}`}
-                                  className="inline-flex max-w-[200px] items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-800 ring-1 ring-violet-200/70 hover:bg-violet-100"
+                                  className="inline-flex max-w-[200px] items-center rounded-full bg-medi-accent/10 px-3 py-1 text-xs font-semibold text-medi-accent ring-1 ring-medi-accent/25 hover:bg-medi-accent/15"
                                 >
                                   <span className="truncate">{c.title}</span>
                                 </Link>
@@ -999,7 +999,7 @@ export function AppShell() {
                                   onClick={() =>
                                     void openIndexedPreview(c.documentId, c.title)
                                   }
-                                  className="rounded-full bg-gray-100 px-2 py-1 text-[10px] font-semibold text-gray-700 ring-1 ring-gray-200 hover:bg-gray-200"
+                                  className="rounded-full bg-medi-canvas px-2 py-1 text-[10px] font-semibold text-medi-ink ring-1 ring-medi-line hover:bg-medi-line/50"
                                 >
                                   Indexed
                                 </button>
@@ -1008,7 +1008,7 @@ export function AppShell() {
                           </div>
                         ) : null}
                         {msg.retrievalNote ? (
-                          <p className="mt-2 text-[11px] text-gray-500">
+                          <p className="mt-2 text-[11px] text-medi-muted">
                             {msg.retrievalNote}
                           </p>
                         ) : null}
@@ -1017,15 +1017,15 @@ export function AppShell() {
                   )
                 )}
                 {chatting ? (
-                  <div className="mr-4 inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+                  <div className="mr-4 inline-flex items-center gap-2 rounded-2xl border border-medi-line bg-white px-3 py-2 text-xs text-medi-muted">
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-medi-accent border-t-transparent" />
                     Thinking…
                   </div>
                 ) : null}
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="sticky bottom-0 mt-4 space-y-2 bg-gradient-to-t from-[#F9FAFB] via-[#F9FAFB] to-transparent pb-1 pt-3">
+              <div className="sticky bottom-0 mt-4 space-y-2 bg-gradient-to-t from-white via-white to-transparent pb-1 pt-3">
                 <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {PROMPT_CHIPS.map((chip) => (
                     <button
@@ -1033,7 +1033,7 @@ export function AppShell() {
                       type="button"
                       disabled={chatting}
                       onClick={() => setChatQ(chip)}
-                      className="shrink-0 rounded-full border border-violet-200/80 bg-white px-3 py-1.5 text-[11px] font-medium text-violet-900 shadow-sm disabled:opacity-50"
+                      className="shrink-0 rounded-full border border-medi-accent/25 bg-white px-3 py-1.5 text-[11px] font-medium text-medi-ink shadow-sm transition hover:border-medi-accent/40 disabled:opacity-50"
                     >
                       {chip}
                     </button>
@@ -1041,14 +1041,14 @@ export function AppShell() {
                 </div>
                 <form
                   onSubmit={(e) => void askChat(e)}
-                  className="flex items-end gap-2 rounded-full border border-gray-200/90 bg-white/95 px-3 py-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)] ring-1 ring-violet-100/60 backdrop-blur-md"
+                  className="flex items-end gap-2 rounded-full border border-medi-line bg-white px-3 py-2 shadow-medi-float ring-1 ring-medi-accent/10 backdrop-blur-md"
                 >
                   <textarea
                     value={chatQ}
                     onChange={(e) => setChatQ(e.target.value)}
                     rows={1}
                     placeholder="Ask about your documents…"
-                    className="max-h-28 min-h-[40px] flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+                    className="max-h-28 min-h-[40px] flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-medi-ink outline-none placeholder:text-medi-muted"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
@@ -1059,7 +1059,7 @@ export function AppShell() {
                   <button
                     type="submit"
                     disabled={chatting || !chatQ.trim()}
-                    className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-lg font-semibold text-white shadow-lg shadow-violet-500/30 disabled:opacity-40"
+                    className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-medi-accent text-lg font-semibold text-white shadow-lg shadow-medi-accent/30 transition hover:bg-medi-accent-hover active:scale-[0.98] disabled:opacity-40"
                     aria-label="Send"
                   >
                     ↑
@@ -1071,12 +1071,12 @@ export function AppShell() {
 
           {activeTab === "profile" ? (
             <div className="space-y-4">
-              <div className="rounded-3xl border border-gray-100 bg-white/90 p-5 shadow-sm">
-                <p className="text-sm font-semibold text-gray-900">Account</p>
-                <p className="mt-1 text-sm text-gray-600">{userLabel || "—"}</p>
+              <div className="rounded-3xl border border-medi-line bg-medi-canvas p-5 shadow-medi-card">
+                <p className="text-sm font-semibold text-medi-ink">Account</p>
+                <p className="mt-1 text-sm text-medi-muted">{userLabel || "—"}</p>
               </div>
               {message ? (
-                <p className="rounded-2xl border border-violet-100 bg-violet-50/80 px-4 py-3 text-sm text-violet-950">
+                <p className="rounded-2xl border border-medi-accent/25 bg-medi-accent/10 px-4 py-3 text-sm text-medi-ink">
                   {message}
                 </p>
               ) : null}
@@ -1084,18 +1084,18 @@ export function AppShell() {
                 type="button"
                 onClick={() => void initDrive()}
                 disabled={initing}
-                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                className="w-full rounded-2xl border border-medi-line bg-white px-4 py-3 text-left text-sm font-semibold text-medi-ink shadow-medi-card transition hover:bg-medi-canvas disabled:opacity-50"
               >
                 {initing ? "Preparing Drive…" : "Prepare Drive folders"}
               </button>
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="w-full rounded-2xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800"
+                className="w-full rounded-2xl bg-medi-ink px-4 py-3 text-sm font-semibold text-white transition hover:opacity-95 active:scale-[0.99]"
               >
                 Sign out
               </button>
-              <p className="text-center text-[11px] text-gray-500">
+              <p className="text-center text-[11px] text-medi-muted">
                 MediSage does not replace a clinician. AI answers may be incomplete.
               </p>
             </div>
@@ -1113,23 +1113,23 @@ export function AppShell() {
             }}
           >
             <div
-              className="flex max-h-[min(85dvh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-gray-200"
+              className="flex max-h-[min(85dvh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-medi-float ring-1 ring-medi-line"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between gap-2 border-b border-gray-100 px-4 py-3">
+              <div className="flex items-start justify-between gap-2 border-b border-medi-line px-4 py-3">
                 <div className="min-w-0">
                   <p
                     id="indexed-preview-title"
-                    className="truncate text-sm font-semibold text-gray-900"
+                    className="truncate text-sm font-semibold text-medi-ink"
                   >
                     Indexed text
                   </p>
-                  <p className="truncate text-xs text-gray-500">{indexedPreviewTitle}</p>
+                  <p className="truncate text-xs text-medi-muted">{indexedPreviewTitle}</p>
                 </div>
                 <button
                   type="button"
                   onClick={closeIndexedPreview}
-                  className="shrink-0 rounded-full px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
+                  className="shrink-0 rounded-full px-2 py-1 text-sm text-medi-muted hover:bg-medi-canvas"
                   aria-label="Close"
                 >
                   ✕
@@ -1137,13 +1137,13 @@ export function AppShell() {
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
                 {indexedPreviewLoading ? (
-                  <p className="text-sm text-gray-500">Loading chunks from your vault…</p>
+                  <p className="text-sm text-medi-muted">Loading chunks from your vault…</p>
                 ) : indexedPreviewError ? (
-                  <p className="text-sm text-red-700">{indexedPreviewError}</p>
+                  <p className="text-sm text-medi-danger">{indexedPreviewError}</p>
                 ) : indexedPreviewData ? (
                   <div className="space-y-3">
-                    <p className="text-xs text-gray-600">
-                      <span className="font-semibold text-gray-800">
+                    <p className="text-xs text-medi-muted">
+                      <span className="font-semibold text-medi-ink">
                         {indexedPreviewData.summary.totalChunksInDatabase.toLocaleString()}
                       </span>{" "}
                       chunk
@@ -1152,7 +1152,7 @@ export function AppShell() {
                         : "s"}{" "}
                       in the database
                       {indexedPreviewData.summary.previewLimitedToChunks != null ? (
-                        <span className="text-gray-500">
+                        <span className="text-medi-muted/90">
                           {" "}
                           (showing first{" "}
                           {indexedPreviewData.summary.previewLimitedToChunks} in this
@@ -1160,19 +1160,19 @@ export function AppShell() {
                         </span>
                       ) : null}
                       ,{" "}
-                      <span className="font-semibold text-gray-800">
+                      <span className="font-semibold text-medi-ink">
                         {indexedPreviewData.summary.totalChars.toLocaleString()}
                       </span>{" "}
                       characters in the previewed chunks.
                       {indexedPreviewData.summary.looksLikePlaceholderNotice ? (
-                        <span className="mt-1 block text-amber-800">
+                        <span className="mt-1 block text-medi-warning">
                           This file is using an “unavailable text” notice—extraction
                           did not produce usable body text for indexing.
                         </span>
                       ) : null}
                     </p>
                     {indexedPreviewData.chunks.length === 0 ? (
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-medi-muted">
                         No chunks in the database for this document (indexing may have
                         failed).
                       </p>
@@ -1180,17 +1180,17 @@ export function AppShell() {
                       indexedPreviewData.chunks.map((ch) => (
                         <div
                           key={ch.chunkIndex}
-                          className="rounded-xl border border-gray-100 bg-gray-50/80 p-3"
+                          className="rounded-2xl border border-medi-line bg-medi-canvas p-3"
                         >
-                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-medi-muted">
                             Chunk {ch.chunkIndex}
-                            <span className="font-normal normal-case text-gray-400">
+                            <span className="font-normal normal-case text-medi-muted/80">
                               {" "}
                               · {ch.charCount.toLocaleString()} chars
                               {ch.truncated ? " · preview truncated" : ""}
                             </span>
                           </p>
-                          <pre className="max-h-52 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-800">
+                          <pre className="max-h-52 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-medi-ink">
                             {ch.content}
                           </pre>
                         </div>
@@ -1199,7 +1199,7 @@ export function AppShell() {
                   </div>
                 ) : null}
               </div>
-              <p className="border-t border-gray-100 px-4 py-2 text-[10px] text-gray-500">
+              <p className="border-t border-medi-line px-4 py-2 text-[10px] text-medi-muted">
                 This is exactly what was embedded for vector search (per chunk). Not
                 medical advice.
               </p>
@@ -1211,7 +1211,7 @@ export function AppShell() {
           className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-5 md:left-1/2 md:right-auto md:w-[400px] md:-translate-x-1/2"
           aria-label="Primary"
         >
-          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/10 bg-gray-900/95 px-5 py-2.5 shadow-[0_8px_30px_rgb(0,0,0,0.2)] backdrop-blur-xl">
+          <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-medi-line bg-white px-4 py-2 shadow-medi-float backdrop-blur-xl">
             {(
               [
                 { id: "home" as const, Icon: NavIconHome },
@@ -1226,12 +1226,16 @@ export function AppShell() {
                   key={id}
                   type="button"
                   onClick={() => setActiveTab(id)}
-                  className="relative flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-white/5"
+                  className={
+                    active
+                      ? "relative flex h-11 w-11 items-center justify-center rounded-full bg-medi-accent/10 transition"
+                      : "relative flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-medi-canvas"
+                  }
                   aria-label={id}
                 >
                   <Icon active={active} />
                   {active ? (
-                    <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
+                    <span className="absolute bottom-1.5 h-1 w-3 rounded-full bg-medi-accent" />
                   ) : null}
                 </button>
               );

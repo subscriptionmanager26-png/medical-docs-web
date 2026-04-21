@@ -32,7 +32,7 @@ export function LoginForm() {
   return (
     <div className="flex w-full max-w-sm flex-col gap-4">
       {error ? (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="rounded-2xl border border-medi-danger/30 bg-medi-danger/10 px-3 py-2 text-sm text-medi-danger">
           {error}
         </p>
       ) : null}
@@ -40,11 +40,11 @@ export function LoginForm() {
         type="button"
         onClick={() => void signInWithGoogle()}
         disabled={loading}
-        className="flex h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60"
+        className="flex h-12 w-full items-center justify-center rounded-2xl bg-medi-accent px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-medi-accent-hover active:scale-[0.98] disabled:opacity-60"
       >
         {loading ? "Redirecting…" : "Continue with Google"}
       </button>
-      <p className="text-center text-xs text-zinc-500">
+      <p className="text-center text-xs text-medi-muted">
         You will be asked to sign in and allow access to Google Drive files that
         this app creates or opens.
       </p>

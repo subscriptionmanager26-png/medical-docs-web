@@ -17,7 +17,7 @@ export default function PrivacyPage() {
           MediSage helps you organize health-related documents in your own Google
           Drive and ask questions about them. This policy describes how information
           is handled when you use the publicly deployed service (for example at{" "}
-          <span className="font-mono text-xs text-zinc-600">
+          <span className="font-mono text-xs text-medi-muted">
             medical-docs-web.vercel.app
           </span>
           ) or another URL where this software is operated (the &quot;Service&quot;).
@@ -32,30 +32,30 @@ export default function PrivacyPage() {
       <LegalSection id="collection" title="Information we collect">
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            <strong className="text-zinc-800">Account and sign-in.</strong> When you
+            <strong className="text-medi-ink">Account and sign-in.</strong> When you
             sign in with Google, we receive identifiers and profile information that
             Google provides to the authentication provider (such as Supabase), for
             example your Google account ID, email address, and name.
           </li>
           <li>
-            <strong className="text-zinc-800">Google Drive.</strong> If you grant
+            <strong className="text-medi-ink">Google Drive.</strong> If you grant
             access, the Service may create folders and files in your Google Drive and
             read or modify files that the application creates or that you open with
             the application, consistent with the OAuth scopes you approve (for
             example the narrow{" "}
-            <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs">
+            <code className="rounded bg-medi-canvas px-1 py-0.5 font-mono text-xs">
               drive.file
             </code>{" "}
             scope where configured).
           </li>
           <li>
-            <strong className="text-zinc-800">Documents and chat.</strong> Content you
+            <strong className="text-medi-ink">Documents and chat.</strong> Content you
             upload or paste, extracted text, embeddings, and messages you send to the
             assistant may be processed and stored so the Service can classify,
             retrieve, and answer questions about your documents.
           </li>
           <li>
-            <strong className="text-zinc-800">Technical data.</strong> Like most web
+            <strong className="text-medi-ink">Technical data.</strong> Like most web
             applications, servers and vendors may log IP addresses, device and
             browser type, timestamps, and similar diagnostic data for security and
             reliability.
@@ -88,19 +88,19 @@ export default function PrivacyPage() {
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            <strong className="text-zinc-800">Google</strong> (Google Identity and
+            <strong className="text-medi-ink">Google</strong> (Google Identity and
             Google Drive);
           </li>
           <li>
-            <strong className="text-zinc-800">Supabase</strong> (authentication and
+            <strong className="text-medi-ink">Supabase</strong> (authentication and
             database);
           </li>
           <li>
-            <strong className="text-zinc-800">Vercel</strong> (or another host) for
+            <strong className="text-medi-ink">Vercel</strong> (or another host) for
             application delivery and server-side processing;
           </li>
           <li>
-            <strong className="text-zinc-800">OpenAI</strong> (or another AI provider
+            <strong className="text-medi-ink">OpenAI</strong> (or another AI provider
             you configure) for document understanding and chat.
           </li>
         </ul>
@@ -173,7 +173,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <p className="border-t border-zinc-200 pt-6 text-xs text-zinc-500">
+      <p className="border-t border-medi-line pt-6 text-xs text-medi-muted">
         This policy is provided for transparency and is not legal advice. For
         regulated health data, obtain guidance from qualified counsel and complete
         required agreements (such as BAAs) with your vendors before production use.

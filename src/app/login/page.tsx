@@ -7,29 +7,32 @@ export default function LoginPage({
   searchParams: { error?: string };
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
-        <h1 className="text-center text-2xl font-semibold tracking-tight text-zinc-900">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-medi-canvas px-4 py-12">
+      <div className="w-full max-w-md rounded-3xl border border-medi-line bg-white p-8 shadow-medi-card sm:p-10">
+        <p className="text-center text-xs font-semibold uppercase tracking-wide text-medi-accent">
+          MediSage
+        </p>
+        <h1 className="mt-2 text-center text-2xl font-semibold tracking-tight text-medi-ink">
           Sign in
         </h1>
-        <p className="mt-2 text-center text-sm text-zinc-600">
-          Use your Google account to store documents in your Drive and ask
-          questions about them.
+        <p className="mt-2 text-center text-sm text-medi-muted">
+          Use your Google account to store documents in your Drive and ask questions
+          about them.
         </p>
         {searchParams.error ? (
-          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-900">
+          <p className="mt-4 rounded-2xl border border-medi-warning/40 bg-medi-warning/10 px-3 py-2 text-center text-sm text-medi-ink">
             Something went wrong ({searchParams.error}). Try again.
           </p>
         ) : null}
         <div className="mt-8">
           <LoginForm />
         </div>
-        <p className="mt-8 text-center text-xs text-zinc-500">
-          <Link href="/privacy" className="underline underline-offset-2 hover:text-zinc-700">
+        <p className="mt-8 text-center text-xs text-medi-muted">
+          <Link href="/privacy" className="underline underline-offset-2 hover:text-medi-ink">
             Privacy
           </Link>
-          <span className="mx-2 text-zinc-300">·</span>
-          <Link href="/tos" className="underline underline-offset-2 hover:text-zinc-700">
+          <span className="mx-2 text-medi-line">·</span>
+          <Link href="/tos" className="underline underline-offset-2 hover:text-medi-ink">
             Terms
           </Link>
         </p>

@@ -15,7 +15,7 @@ export default function TermsPage() {
         <p>
           By accessing or using MediSage (the &quot;Service&quot;), including
           deployments such as{" "}
-          <span className="font-mono text-xs text-zinc-600">
+          <span className="font-mono text-xs text-medi-muted">
             medical-docs-web.vercel.app
           </span>
           , you agree to these Terms of Service. If you do not agree, do not use the
@@ -161,7 +161,7 @@ export default function TermsPage() {
           have exclusive jurisdiction for disputes, unless applicable law requires
           otherwise.
         </p>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-medi-muted">
           If you operate a different deployment, you may replace this section with the
           governing law and venue that apply to your organization.
         </p>
@@ -175,7 +175,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <p className="border-t border-zinc-200 pt-6 text-xs text-zinc-500">
+      <p className="border-t border-medi-line pt-6 text-xs text-medi-muted">
         These Terms are a practical template and are not a substitute for legal advice.
         Have counsel review them before relying on them for a commercial or regulated
         offering.
