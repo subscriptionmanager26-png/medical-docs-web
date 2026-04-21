@@ -96,8 +96,27 @@ That screen appears when the OAuth **consent screen** is in **Testing** (only li
    - **Application home page**: public URL of your deployed app (e.g. `https://your-app.vercel.app`).
    - **Privacy policy link**: must be **publicly reachable**; should describe use of Google user data and Drive (see [User Data policy](https://developers.google.com/terms/api-services-user-data-policy)). This app ships public pages at **`/privacy`** and **`/tos`** (e.g. `https://medical-docs-web.vercel.app/privacy`).
    - **Scopes**: declare what you actually request (at minimum `drive.file` if you use Drive; Supabase may add `openid`, `email`, `profile`—keep the consent screen in sync with Supabase’s Google provider scopes).
-2. **Verify domain ownership** of your authorized domain in [Google Search Console](https://search.google.com/search-console) (required for production / verification in most cases).
+2. **Verify domain ownership** in [Google Search Console](https://search.google.com/search-console) (required for production / verification in most cases). See **§7.1** if Google says your home page is “not registered to you.”
 3. Enable **Google Drive API** on the same Cloud project (already needed for uploads).
+
+### 7.1 “The website of your home page URL … is not registered to you”
+
+Google checks that **you control** the **Application home page** URL on the OAuth consent screen (e.g. `https://medical-docs-web.vercel.app`). Fix it with Search Console:
+
+1. **Use a URL-prefix property (not “Domain” for `vercel.app`).**  
+   You do **not** own the apex domain `vercel.app`, so do **not** try to verify `vercel.app` as a Domain property. Add a property with type **URL prefix**: exactly  
+   `https://medical-docs-web.vercel.app/`  
+   (same host and scheme as your live site).
+
+2. **Verify with the HTML tag method.**  
+   Search Console will show a `<meta name="google-site-verification" content="…" />` value. Put **only the `content` token** in Vercel (and local) env as **`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`**, redeploy, then click **Verify** in Search Console. This repo’s root `layout` emits that meta tag when the variable is set (see `.env.example`).
+
+3. **Align OAuth consent screen domains.**  
+   Under **Authorized domains**, add **`medical-docs-web.vercel.app`** (no `https://`). **Application home page** should be `https://medical-docs-web.vercel.app` (or `/` if the form expects the site root—match what you verified). **Privacy policy** should be on the same host, e.g. `https://medical-docs-web.vercel.app/privacy`.
+
+4. **If Google still will not accept a `*.vercel.app` site** for your use case, connect a **custom domain** you purchase (e.g. `medisage.com`) in Vercel, verify that domain in Search Console, then update the OAuth home page, authorized domains, and policy URLs to use that domain.
+
+Reference: [Google Search Console verification](https://support.google.com/webmasters/answer/9008080).
 
 ### Submit for verification
 
