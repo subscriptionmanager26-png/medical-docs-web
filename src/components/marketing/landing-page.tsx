@@ -123,14 +123,10 @@ export function LandingPage() {
               About
             </a>
           </nav>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden text-sm font-medium text-medi-muted transition hover:text-medi-ink sm:inline"
-            >
-              Sign in
-            </Link>
-            <PrimaryCta className="!px-5 !py-2.5 text-xs sm:text-sm">Get started</PrimaryCta>
+          <div className="flex items-center">
+            <PrimaryCta className="!px-5 !py-2.5 text-xs sm:text-sm">
+              Start Tracking
+            </PrimaryCta>
           </div>
         </div>
       </header>
@@ -167,9 +163,9 @@ export function LandingPage() {
           data-reveal
           className="relative z-[1] max-w-3xl text-balance text-4xl font-semibold leading-[1.08] tracking-tight text-medi-ink sm:text-6xl sm:leading-[1.06]"
         >
-          Clarity and <em className="not-italic text-medi-accent">control</em>
+          Clarity And Control
           <br />
-          for your family&apos;s health.
+          For Your Family&apos;s Health
         </h1>
 
         <p
