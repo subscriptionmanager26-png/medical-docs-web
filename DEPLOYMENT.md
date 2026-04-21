@@ -82,3 +82,32 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## 7. Google “This app hasn’t been verified” (OAuth verification)
+
+That screen appears when the OAuth **consent screen** is in **Testing** (only listed test users get a smooth flow) or when the app has **not completed Google’s review** for the scopes you use. MediSage requests **`drive.file`** (narrow Drive access) plus the usual **Sign in with Google** profile scopes via Supabase.
+
+### Before you submit
+
+1. In [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **OAuth consent screen**:
+   - **User type**: *External* (typical) or *Internal* only if you use Google Workspace and all users are in your org.
+   - Fill **App name**, **User support email**, **Developer contact**.
+   - **App domain**: add your **Authorized domains** (e.g. `vercel.app` subdomain or your custom domain—no `https://`).
+   - **Application home page**: public URL of your deployed app (e.g. `https://your-app.vercel.app`).
+   - **Privacy policy link**: must be **publicly reachable**; should describe use of Google user data and Drive (see [User Data policy](https://developers.google.com/terms/api-services-user-data-policy)). This app ships public pages at **`/privacy`** and **`/tos`** (e.g. `https://medical-docs-web.vercel.app/privacy`).
+   - **Scopes**: declare what you actually request (at minimum `drive.file` if you use Drive; Supabase may add `openid`, `email`, `profile`—keep the consent screen in sync with Supabase’s Google provider scopes).
+2. **Verify domain ownership** of your authorized domain in [Google Search Console](https://search.google.com/search-console) (required for production / verification in most cases).
+3. Enable **Google Drive API** on the same Cloud project (already needed for uploads).
+
+### Submit for verification
+
+1. **APIs & Services** → **OAuth consent screen** → **Audience**: when ready for real users, move from **Testing** toward **Production** and use **Submit for verification** (wording varies; see [OAuth app verification](https://support.google.com/cloud/answer/13463073) and [sensitive scope verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification)).
+2. Answer Google’s questionnaire honestly: what the app does, why it needs **Drive** access, demo video if asked.
+3. Allow **several business days** for review; fix any follow-up emails from Google.
+
+### While you wait (internal testing)
+
+- Add specific Gmail accounts under **Test users** on the consent screen so they can sign in during **Testing** mode (still may see a warning, but they can proceed).
+- Keep a **separate Cloud project** for experiments so production credentials stay stable.
+
+Official references: [Drive API scopes](https://developers.google.com/drive/api/guides/api-specific-auth) · [Minimum scopes / verification](https://support.google.com/cloud/answer/13807380).

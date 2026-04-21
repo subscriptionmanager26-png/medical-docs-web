@@ -33,6 +33,15 @@ export default function Home() {
           review. This template encrypts sessions via Supabase and keeps files in
           the user&apos;s own Drive.
         </p>
+        <p className="mt-8 text-center text-xs text-zinc-500">
+          <Link href="/privacy" className="underline underline-offset-2 hover:text-zinc-700">
+            Privacy Policy
+          </Link>
+          <span className="mx-2 text-zinc-300">·</span>
+          <Link href="/tos" className="underline underline-offset-2 hover:text-zinc-700">
+            Terms of Service
+          </Link>
+        </p>
       </main>
     </div>
   );
