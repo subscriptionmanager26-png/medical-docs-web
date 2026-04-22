@@ -16,12 +16,27 @@ export default function LoginPage({
           Sign in
         </h1>
         <p className="mt-2 text-center text-sm text-medi-muted">
-          Use your Google account to store documents in your Drive and ask questions
-          about them.
+          <strong className="font-semibold text-medi-ink">Google Drive access is required</strong> — we
+          only use files and folders this app creates. You&apos;ll be asked to allow that on the same
+          Google sign-in screen.
         </p>
         {searchParams.error ? (
           <p className="mt-4 rounded-2xl border border-medi-warning/40 bg-medi-warning/10 px-3 py-2 text-center text-sm text-medi-ink">
-            Something went wrong ({searchParams.error}). Try again.
+            {searchParams.error === "drive_required" ? (
+              <>
+                Google did not grant Drive access for this sign-in. Try again, choose{" "}
+                <strong>Allow</strong> for Drive (app-specific files), and do not turn that permission
+                off on Google&apos;s consent screen.
+              </>
+            ) : searchParams.error === "no_refresh" ? (
+              <>
+                We could not get long-term Google access. Try signing in again. If it keeps happening,
+                open Google Account → Security → third-party app access, remove MediSage, then sign
+                in once more.
+              </>
+            ) : (
+              <>Something went wrong ({searchParams.error}). Try again.</>
+            )}
           </p>
         ) : null}
         <div className="mt-8">

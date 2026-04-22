@@ -25,6 +25,8 @@ export function LoginForm() {
         queryParams: {
           access_type: "offline",
           prompt: "consent",
+          /** Single authorization bundle; avoids incremental “add more later” behavior when possible. */
+          include_granted_scopes: "false",
         },
       },
     });
@@ -50,8 +52,9 @@ export function LoginForm() {
         {loading ? "Redirecting…" : "Continue with Google"}
       </button>
       <p className="text-center text-xs text-medi-muted">
-        After you allow Drive access, your MediSage vault folders are created
-        automatically—no extra setup step.
+        <strong className="font-semibold text-medi-ink">Drive access is required</strong> — MediSage
+        only uses files and folders it creates. On Google&apos;s screen, keep Drive permission
+        enabled, then choose Allow, or sign-in cannot finish.
       </p>
     </div>
   );

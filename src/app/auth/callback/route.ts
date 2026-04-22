@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isInsufficientDriveScopeError } from "@/lib/google-drive";
 import { syncDriveVaultForUser } from "@/lib/user-drive-sync";
 
 export async function GET(request: NextRequest) {
@@ -23,7 +24,26 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getSession();
 
   const refresh = session?.provider_refresh_token;
+
+  if (session?.user && !refresh) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(`${origin}/login?error=no_refresh`);
+  }
+
   if (session?.user && refresh) {
+    try {
+      await syncDriveVaultForUser(supabase, session.user.id, refresh);
+    } catch (err) {
+      if (isInsufficientDriveScopeError(err)) {
+        await supabase.auth.signOut();
+        return NextResponse.redirect(`${origin}/login?error=drive_required`);
+      }
+      console.error("[auth/callback] Drive vault sync failed", {
+        userId: session.user.id,
+        err,
+      });
+    }
+
     await supabase.from("google_credentials").upsert(
       {
         user_id: session.user.id,
@@ -32,15 +52,6 @@ export async function GET(request: NextRequest) {
       },
       { onConflict: "user_id" },
     );
-
-    try {
-      await syncDriveVaultForUser(supabase, session.user.id, refresh);
-    } catch (err) {
-      console.error("[auth/callback] Drive vault sync failed", {
-        userId: session.user.id,
-        err,
-      });
-    }
   }
 
   const forwardedHost = request.headers.get("x-forwarded-host");
