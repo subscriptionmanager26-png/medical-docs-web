@@ -135,6 +135,11 @@ Google checks that **you control** the **Application home page** URL on the OAut
 2. **Verify with the HTML tag method.**  
    Search Console will show a `<meta name="google-site-verification" content="…" />` tag. The same verification value is embedded in **`src/app/layout.tsx`** (`GOOGLE_SITE_VERIFICATION`); Next.js emits the meta tag on every page. **Deploy** the latest `main` to Vercel, confirm View Source on the home page contains `google-site-verification`, then click **Verify** in Search Console. If you rotate the token in Search Console, update that constant and redeploy.
 
+2b. **If you use the HTML file method instead (or get a 404 on the file).**  
+   The file **`public/googleafb47429159cf591.html`** must be **committed** to the branch Vercel builds, then redeployed. After deploy, open  
+   `https://<your-exact-host>/googleafb47429159cf591.html`  
+   in a private window—you should see one plain-text line. **404** usually means: the file was never pushed to git, or **Vercel → Settings → General → Root Directory** is not the app folder (the one that contains both `package.json` and `public/`), or you’re checking the wrong host (`www` vs non-`www`, or a preview URL vs production). The middleware in this project skips `*.html` so verification files are not processed by auth.
+
 3. **Align OAuth consent screen domains.**  
    Under **Authorized domains**, add **`medical-docs-web.vercel.app`** (no `https://`). **Application home page** should be `https://medical-docs-web.vercel.app` (or `/` if the form expects the site root—match what you verified). **Privacy policy** should be on the same host, e.g. `https://medical-docs-web.vercel.app/privacy`.
 
