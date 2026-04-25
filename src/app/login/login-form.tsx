@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+function safeNextPath(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/app";
+  return raw;
+}
+
 export function LoginForm() {
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -12,10 +19,11 @@ export function LoginForm() {
     setError(null);
     const supabase = createClient();
     const origin = window.location.origin;
+    const next = safeNextPath(searchParams.get("next"));
     const { error: signError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${origin}/auth/callback?next=/app`,
+        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
         scopes: [
           "openid",
           "email",

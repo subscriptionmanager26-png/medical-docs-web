@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { LoginForm } from "./login-form";
 
 export default function LoginPage({
@@ -40,7 +41,15 @@ export default function LoginPage({
           </p>
         ) : null}
         <div className="mt-8">
-          <LoginForm />
+          <Suspense
+            fallback={
+              <div className="flex h-12 w-full items-center justify-center rounded-2xl border border-medi-line bg-medi-canvas text-sm text-medi-muted">
+                Loading…
+              </div>
+            }
+          >
+            <LoginForm />
+          </Suspense>
         </div>
         <p className="mt-8 text-center text-xs text-medi-muted">
           <Link href="/privacy" className="underline underline-offset-2 hover:text-medi-ink">

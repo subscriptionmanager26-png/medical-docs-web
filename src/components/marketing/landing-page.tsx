@@ -493,6 +493,9 @@ export function LandingPage() {
               <Link href="/app" className="mb-2 block text-sm font-light text-white/55 transition hover:text-white/90">
                 Open app
               </Link>
+              <Link href="/cas" className="mb-2 block text-sm font-light text-white/55 transition hover:text-white/90">
+                CAS request
+              </Link>
             </div>
             <div>
               <p className="mb-4 text-[10px] font-semibold uppercase tracking-wider text-white/40">Company</p>
