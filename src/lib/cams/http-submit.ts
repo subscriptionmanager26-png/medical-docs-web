@@ -7,12 +7,41 @@ const REFERER =
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-/** Same as Angular `commonFunctions.dateformats` (en-style short month). */
-export function camsDateFormat(d: Date): string {
-  const day = d.getDate();
-  const C = +day < 10 ? `0${day}` : String(day);
-  const mon = d.toLocaleString("en-US", { month: "short" });
-  return `${C}-${mon}-${d.getFullYear()}`;
+/**
+ * CAMS India site uses calendar dates like `01-Jan-2020` (Angular `dateformats`).
+ * Always interpret the instant in **Asia/Kolkata** so:
+ * - ISO `2020-01-01T00:00:00.000Z` stays 01-Jan-2020 (not 31-Dec-2019 in US TZ).
+ * - "Today" matches an Indian user's statement period, not only UTC midnight.
+ */
+const CAMS_STATEMENT_TZ = "Asia/Kolkata";
+
+/**
+ * Same shape as Angular `commonFunctions.dateformats` (DD-Mon-YYYY, short month).
+ * Uses CAMS_STATEMENT_TZ for day/month/year (not server local time).
+ */
+export function camsDateFormatForCams(d: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: CAMS_STATEMENT_TZ,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).formatToParts(d);
+
+  const dayNum = Number(
+    parts.find((p) => p.type === "day")?.value ?? "NaN",
+  );
+  const mon = parts.find((p) => p.type === "month")?.value ?? "Jan";
+  const year = parts.find((p) => p.type === "year")?.value ?? "1970";
+  const C = !Number.isFinite(dayNum)
+    ? "01"
+    : dayNum < 10
+      ? `0${dayNum}`
+      : String(dayNum);
+  return `${C}-${mon}-${year}`;
+}
+
+function defaultFromDate(): Date {
+  return new Date(Date.UTC(2020, 0, 1, 12, 0, 0));
 }
 
 function parseResponseCipherText(text: string): string {
@@ -111,22 +140,31 @@ export type SubmitCamsCasOptions = {
   pan?: string;
 };
 
+export type SubmitCamsCasHttpResult = {
+  cams: Record<string, unknown>;
+  /** Exact `from_date` / `to_date` strings sent in the encrypted CAMS payload. */
+  datesSent: { from_date: string; to_date: string };
+};
+
 /**
  * HTTP-only CAS submit: session + reCAPTCHA (short browser hop) + final request.
  */
 export async function submitCamsCasViaHttp(
   options: SubmitCamsCasOptions,
-): Promise<Record<string, unknown>> {
+): Promise<SubmitCamsCasHttpResult> {
   const {
     email,
     password,
-    fromDate = new Date(2020, 0, 1),
+    fromDate = defaultFromDate(),
     toDate = new Date(),
     statementType = "detailed",
     requestFlag = "SP",
     zeroBalFolio = "Y",
     pan = "",
   } = options;
+
+  const fromStr = camsDateFormatForCams(fromDate);
+  const toStr = camsDateFormatForCams(toDate);
 
   const em = String(email).trim().toLowerCase();
   const jar = new CamsCookieJar();
@@ -178,8 +216,8 @@ export async function submitCamsCasViaHttp(
     sub_flag: "CAMSKARVYFTAMILSBFS",
     user_id: em,
     password,
-    from_date: camsDateFormat(fromDate),
-    to_date: camsDateFormat(toDate),
+    from_date: fromStr,
+    to_date: toStr,
     email_id: em,
     statement_type: statementType,
     login_type: "EMAIL",
@@ -193,5 +231,9 @@ export async function submitCamsCasViaHttp(
     recaptchatoken,
   };
 
-  return postEncrypted(jar, submitPlain);
+  const cams = await postEncrypted(jar, submitPlain);
+  return {
+    cams,
+    datesSent: { from_date: fromStr, to_date: toStr },
+  };
 }

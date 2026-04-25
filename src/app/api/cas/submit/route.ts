@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   const { email, password, pan, fromDate, toDate } = parsed.data;
 
   try {
-    const result = await submitCamsCasViaHttp({
+    const { cams, datesSent } = await submitCamsCasViaHttp({
       email,
       password,
       pan,
@@ -43,15 +43,17 @@ export async function POST(request: NextRequest) {
       toDate: toDate ? new Date(toDate) : undefined,
     });
 
-    const status = result.status as
+    const status = cams.status as
       | { errorflag?: boolean; errormsg?: string }
       | undefined;
 
     return NextResponse.json({
       ok: !(status?.errorflag ?? false),
       status,
-      detail: result.detail ?? null,
-      detail1: result.detail1 ?? null,
+      detail: cams.detail ?? null,
+      detail1: cams.detail1 ?? null,
+      /** Echo of `from_date` / `to_date` sent to CAMS (DD-Mon-YYYY in Asia/Kolkata). */
+      datesSent,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "CAS submit failed";
