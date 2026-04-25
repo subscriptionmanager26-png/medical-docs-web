@@ -98,10 +98,18 @@ export function CasRequestForm() {
           className="mt-1 size-4 rounded border-medi-line text-medi-accent"
         />
         <span>
-          Include zero-balance folios (<code className="rounded bg-medi-canvas px-1">zero_bal_folio=Y</code>). Leave
-          off to match CAMS default <code className="rounded bg-medi-canvas px-1">N</code>.
+          Include zero-balance folios (<code className="rounded bg-medi-canvas px-1">Y</code>). Leave unchecked for{" "}
+          <code className="rounded bg-medi-canvas px-1">N</code> — the same default as a typical CAMS browser request; if
+          you see error <code className="rounded bg-medi-canvas px-1">7.7</code> with a low reCAPTCHA score, try with{" "}
+          <code className="rounded bg-medi-canvas px-1">N</code> first.
         </span>
       </label>
+      <p className="rounded-2xl border border-medi-warning/30 bg-medi-warning/10 px-3 py-2 text-xs leading-relaxed text-medi-ink">
+        If the JSON shows <code className="rounded bg-medi-canvas px-1">captcha_score: 0</code> and{" "}
+        <code className="rounded bg-medi-canvas px-1">errorcode: 7.7</code>, CAMS is treating the token as bot-like.
+        Wait a minute, keep <strong className="font-semibold">zero_bal_folio=N</strong>, and submit again; automated
+        headless browsers often score lower than the same flow in your desktop Chrome.
+      </p>
       <p className="text-xs leading-relaxed text-medi-muted">
         Period bounds are sent as <strong className="font-semibold text-medi-ink">DD-Mon-YYYY</strong> (e.g.{" "}
         <code className="rounded bg-medi-canvas px-1">01-Apr-2026</code>) using{" "}

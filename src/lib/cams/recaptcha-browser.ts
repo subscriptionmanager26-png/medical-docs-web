@@ -7,6 +7,14 @@ export const CAMS_RECAPTCHA_SITE_KEY =
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
+/** Same URL as CAMS `page_name` / API referer — improves reCAPTCHA v3 context vs the homepage. */
+const CAMS_RECAPTCHA_PAGE =
+  "https://www.camsonline.com/Investors/Statements/Consolidated-Account-Statement";
+
+function sleep(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms));
+}
+
 async function launchForCams(): Promise<Browser> {
   if (process.env.VERCEL === "1") {
     /**
@@ -48,19 +56,28 @@ async function launchForCams(): Promise<Browser> {
 }
 
 /**
- * Obtains a reCAPTCHA token the same way CAMS does: load Google script on
- * www.camsonline.com, then enterprise.execute(siteKey, { action }).
+ * Obtains a reCAPTCHA token like CAMS: open the real CAS route (not `/`),
+ * prefer the site’s own enterprise client if present, else inject the script.
  */
 export async function getRecaptchaToken(
   action = "GET_ACCOUNT_STATEMENT",
 ): Promise<string> {
   const browser = await launchForCams();
-  const page = await browser.newPage({ userAgent: UA });
+  const context = await browser.newContext({
+    userAgent: UA,
+    viewport: { width: 1366, height: 768 },
+    locale: "en-IN",
+    timezoneId: "Asia/Kolkata",
+    javaScriptEnabled: true,
+  });
+  const page = await context.newPage();
   try {
-    await page.goto("https://www.camsonline.com/", {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
+    await page.goto(CAMS_RECAPTCHA_PAGE, {
+      waitUntil: "load",
+      timeout: 90000,
     });
+    /** Let Angular / reCAPTCHA bootstrap; very fast execute tends to score 0. */
+    await sleep(1500);
 
     const token = await page.evaluate(
       async ({
@@ -80,32 +97,44 @@ export async function getRecaptchaToken(
             document.head.appendChild(s);
           });
 
+        type Ent = {
+          ready: (cb: () => void) => void;
+          execute: (k: string, o: { action: string }) => Promise<string>;
+        };
+        const g = (
+          globalThis as unknown as {
+            grecaptcha?: { enterprise?: Ent };
+          }
+        ).grecaptcha;
+
+        const executeEnterprise = async (ent: Ent) => {
+          await new Promise<void>((r) => {
+            ent.ready(r);
+          });
+          return ent.execute(siteKey, { action: act });
+        };
+
+        /** Prefer script already loaded by camsonline.com (same as a real user). */
+        if (g?.enterprise) {
+          return executeEnterprise(g.enterprise);
+        }
+
         const tryEnterprise = async () => {
           await load(
             `https://www.google.com/recaptcha/enterprise.js?render=${encodeURIComponent(siteKey)}`,
           );
-          const g = (
-            globalThis as unknown as {
-              grecaptcha?: {
-                enterprise?: {
-                  ready: (cb: () => void) => void;
-                  execute: (k: string, o: { action: string }) => Promise<string>;
-                };
-              };
-            }
+          const g2 = (
+            globalThis as unknown as { grecaptcha?: { enterprise?: Ent } }
           ).grecaptcha;
-          if (!g?.enterprise) throw new Error("enterprise not available");
-          await new Promise<void>((r) => {
-            g.enterprise!.ready(r);
-          });
-          return g.enterprise!.execute(siteKey, { action: act });
+          if (!g2?.enterprise) throw new Error("enterprise not available");
+          return executeEnterprise(g2.enterprise);
         };
 
         const tryStandard = async () => {
           await load(
             `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`,
           );
-          const g = (
+          const g3 = (
             globalThis as unknown as {
               grecaptcha?: {
                 ready: (cb: () => void) => void;
@@ -113,11 +142,11 @@ export async function getRecaptchaToken(
               };
             }
           ).grecaptcha;
-          if (!g) throw new Error("grecaptcha not available");
+          if (!g3) throw new Error("grecaptcha not available");
           await new Promise<void>((r) => {
-            g.ready(r);
+            g3.ready(r);
           });
-          return g.execute(siteKey, { action: act });
+          return g3.execute(siteKey, { action: act });
         };
 
         try {
@@ -134,6 +163,7 @@ export async function getRecaptchaToken(
     }
     return token;
   } finally {
+    await context.close();
     await browser.close();
   }
 }

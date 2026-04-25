@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
   const { email, password, pan, fromDate, toDate, zeroBalFolio } = parsed.data;
 
   try {
-    const { cams, datesSent, zeroBalFolioSent } = await submitCamsCasViaHttp({
+    const { cams, datesSent, zeroBalFolioSent, recaptchaRetried } =
+      await submitCamsCasViaHttp({
       email,
       password,
       pan,
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
       /** Echo of `from_date` / `to_date` (DD-Mon-YYYY, Asia/Kolkata). */
       datesSent,
       zeroBalFolioSent,
+      ...(recaptchaRetried ? { recaptchaRetried: true } : {}),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "CAS submit failed";

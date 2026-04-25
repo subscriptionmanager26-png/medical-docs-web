@@ -39,6 +39,10 @@ function defaultFromDate(): Date {
   return new Date(Date.UTC(2020, 0, 1, 12, 0, 0));
 }
 
+function sleep(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms));
+}
+
 function parseResponseCipherText(text: string): string {
   const t = text.trim();
   try {
@@ -140,6 +144,8 @@ export type SubmitCamsCasHttpResult = {
   /** Exact `from_date` / `to_date` strings (DD-Mon-YYYY) sent in the encrypted CAMS payload. */
   datesSent: { from_date: string; to_date: string };
   zeroBalFolioSent: string;
+  /** True if we did one extra reCAPTCHA fetch + resubmit after 7.7 + captcha_score 0. */
+  recaptchaRetried?: boolean;
 };
 
 /**
@@ -228,10 +234,31 @@ export async function submitCamsCasViaHttp(
     recaptchatoken,
   };
 
-  const cams = await postEncrypted(jar, submitPlain);
+  let cams = await postEncrypted(jar, submitPlain);
+
+  const st0 = cams.status as
+    | {
+        errorflag?: boolean;
+        errorcode?: string | number;
+        captcha_score?: number;
+      }
+    | undefined;
+  const code0 = String(st0?.errorcode ?? "");
+  const lowScoreBlock =
+    st0?.errorflag === true && code0 === "7.7" && st0.captcha_score === 0;
+
+  let recaptchaRetried = false;
+  if (lowScoreBlock) {
+    await sleep(2500);
+    const token2 = await getRecaptchaToken(recaptchaAction);
+    cams = await postEncrypted(jar, { ...submitPlain, recaptchatoken: token2 });
+    recaptchaRetried = true;
+  }
+
   return {
     cams,
     datesSent: { from_date: fromStr, to_date: toStr },
     zeroBalFolioSent: zeroBalFolio,
+    ...(recaptchaRetried ? { recaptchaRetried: true } : {}),
   };
 }
