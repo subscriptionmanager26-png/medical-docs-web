@@ -89,7 +89,7 @@ export function CasRequestForm() {
         />
       </label>
       <p className="text-xs leading-relaxed text-medi-muted">
-        Period bounds are sent to CAMS as <strong className="font-semibold text-medi-ink">DD-Mon-YYYY</strong> using{" "}
+        Period bounds are sent to CAMS as <strong className="font-semibold text-medi-ink">DD-MM-YYYY</strong> using{" "}
         <strong className="font-semibold text-medi-ink">India (Asia/Kolkata)</strong> calendar days — same idea as
         picking dates on the CAMS site in India. The API response includes{" "}
         <code className="rounded bg-medi-canvas px-1">datesSent</code> so you can confirm what was submitted.

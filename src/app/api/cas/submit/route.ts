@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       status,
       detail: cams.detail ?? null,
       detail1: cams.detail1 ?? null,
-      /** Echo of `from_date` / `to_date` sent to CAMS (DD-Mon-YYYY in Asia/Kolkata). */
+      /** Echo of `from_date` / `to_date` sent to CAMS (DD-MM-YYYY, Asia/Kolkata). */
       datesSent,
     });
   } catch (e) {
