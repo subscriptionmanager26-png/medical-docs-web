@@ -9,10 +9,22 @@ const UA =
 
 async function launchForCams(): Promise<Browser> {
   if (process.env.VERCEL === "1") {
+    /**
+     * @sparticuz/chromium only inflates `al2023.tar.br` (bundled NSS/NSPR libs) and
+     * prepends `/tmp/al2023/lib` to `LD_LIBRARY_PATH` when it thinks it is on
+     * Lambda/Netlify (`AWS_EXECUTION_ENV` / `AWS_LAMBDA_JS_RUNTIME`). Vercel sets
+     * neither, so without this the binary extracts to `/tmp/chromium` but fails
+     * with: libnss3.so: cannot open shared object file.
+     * @see https://github.com/Sparticuz/chromium/issues/254
+     */
+    process.env.AWS_LAMBDA_JS_RUNTIME ??= "nodejs22.x";
+
     const chromiumPack = await import("@sparticuz/chromium");
+    const serverlessChromium = chromiumPack.default;
     return chromium.launch({
-      args: chromiumPack.default.args,
-      executablePath: await chromiumPack.default.executablePath(),
+      args: serverlessChromium.args,
+      executablePath: await serverlessChromium.executablePath(),
+      /** Sparticuz uses legacy headless (`"shell"`); Playwright types only `boolean` here. */
       headless: true,
     });
   }
