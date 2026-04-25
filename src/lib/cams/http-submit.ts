@@ -211,7 +211,7 @@ export async function submitCamsCasViaHttp(
   }
 
   const recaptchaAction = "GET_ACCOUNT_STATEMENT";
-  const recaptchatoken = await getRecaptchaToken(recaptchaAction);
+  const recaptchatoken = await getRecaptchaToken(recaptchaAction, jar.header());
 
   const submitPlain = {
     ...basePayload(),
@@ -250,7 +250,7 @@ export async function submitCamsCasViaHttp(
   let recaptchaRetried = false;
   if (lowScoreBlock) {
     await sleep(2500);
-    const token2 = await getRecaptchaToken(recaptchaAction);
+    const token2 = await getRecaptchaToken(recaptchaAction, jar.header());
     cams = await postEncrypted(jar, { ...submitPlain, recaptchatoken: token2 });
     recaptchaRetried = true;
   }

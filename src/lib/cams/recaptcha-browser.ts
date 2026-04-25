@@ -15,6 +15,33 @@ function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
 }
 
+type CamPlaywrightCookie = {
+  name: string;
+  value: string;
+  url: string;
+};
+
+/** Map a `Cookie` request header into Playwright storage so the CAS page matches the API jar. */
+function cookiesForPlaywrightFromHeader(header: string): CamPlaywrightCookie[] {
+  const out: CamPlaywrightCookie[] = [];
+  if (!header.trim()) return out;
+  for (const part of header.split(";")) {
+    const seg = part.trim();
+    if (!seg) continue;
+    const eq = seg.indexOf("=");
+    if (eq <= 0) continue;
+    const name = seg.slice(0, eq).trim();
+    const value = seg.slice(eq + 1).trim();
+    if (!name) continue;
+    out.push({
+      name,
+      value,
+      url: "https://www.camsonline.com/",
+    });
+  }
+  return out;
+}
+
 async function launchForCams(): Promise<Browser> {
   if (process.env.VERCEL === "1") {
     /**
@@ -58,9 +85,14 @@ async function launchForCams(): Promise<Browser> {
 /**
  * Obtains a reCAPTCHA token like CAMS: open the real CAS route (not `/`),
  * prefer the site’s own enterprise client if present, else inject the script.
+ *
+ * @param camsonlineCookieHeader - Optional `Cookie` header string from the same
+ *   `fetch` jar used for `GET_ACCOUNT_STATEMENT_SESSION` so Google sees the same
+ *   first-party cookies as the upcoming submit (can improve v3 score vs a cold browser).
  */
 export async function getRecaptchaToken(
   action = "GET_ACCOUNT_STATEMENT",
+  camsonlineCookieHeader?: string,
 ): Promise<string> {
   const browser = await launchForCams();
   const context = await browser.newContext({
@@ -70,6 +102,16 @@ export async function getRecaptchaToken(
     timezoneId: "Asia/Kolkata",
     javaScriptEnabled: true,
   });
+  const seeded = cookiesForPlaywrightFromHeader(camsonlineCookieHeader ?? "");
+  if (seeded.length > 0) {
+    try {
+      await context.addCookies(seeded);
+    } catch (err) {
+      console.warn("[getRecaptchaToken] addCookies failed; continuing without jar seed", {
+        err,
+      });
+    }
+  }
   const page = await context.newPage();
   try {
     await page.goto(CAMS_RECAPTCHA_PAGE, {
