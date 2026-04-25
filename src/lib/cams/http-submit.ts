@@ -8,24 +8,31 @@ const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 /**
- * CAMS expects statement bounds as **DD-MM-YYYY** (numeric month).
- * Always interpret the instant in **Asia/Kolkata** so calendar days match India.
+ * CAMS sends statement bounds like `01-Apr-2026` (Angular `dateformats`: DD-Mon-YYYY).
+ * Calendar day is taken in **Asia/Kolkata** so it matches the live CAMS site in India.
  */
 const CAMS_STATEMENT_TZ = "Asia/Kolkata";
 
-/** `DD-MM-YYYY` in Asia/Kolkata (zero-padded day and month). */
+/** `DD-Mon-YYYY` with short English month (e.g. `25-Apr-2026`) in Asia/Kolkata. */
 export function camsDateFormatForCams(d: Date): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: CAMS_STATEMENT_TZ,
-    day: "2-digit",
-    month: "2-digit",
+    day: "numeric",
+    month: "short",
     year: "numeric",
   }).formatToParts(d);
 
-  const dd = parts.find((p) => p.type === "day")?.value ?? "01";
-  const mm = parts.find((p) => p.type === "month")?.value ?? "01";
-  const yyyy = parts.find((p) => p.type === "year")?.value ?? "1970";
-  return `${dd}-${mm}-${yyyy}`;
+  const dayNum = Number(
+    parts.find((p) => p.type === "day")?.value ?? "NaN",
+  );
+  const mon = parts.find((p) => p.type === "month")?.value ?? "Jan";
+  const year = parts.find((p) => p.type === "year")?.value ?? "1970";
+  const dd = !Number.isFinite(dayNum)
+    ? "01"
+    : dayNum < 10
+      ? `0${dayNum}`
+      : String(dayNum);
+  return `${dd}-${mon}-${year}`;
 }
 
 function defaultFromDate(): Date {
@@ -130,8 +137,9 @@ export type SubmitCamsCasOptions = {
 
 export type SubmitCamsCasHttpResult = {
   cams: Record<string, unknown>;
-  /** Exact `from_date` / `to_date` strings (DD-MM-YYYY) sent in the encrypted CAMS payload. */
+  /** Exact `from_date` / `to_date` strings (DD-Mon-YYYY) sent in the encrypted CAMS payload. */
   datesSent: { from_date: string; to_date: string };
+  zeroBalFolioSent: string;
 };
 
 /**
@@ -147,7 +155,8 @@ export async function submitCamsCasViaHttp(
     toDate = new Date(),
     statementType = "detailed",
     requestFlag = "SP",
-    zeroBalFolio = "Y",
+    /** Matches CAMS UI default in practice; `Y` = include zero-balance folios. */
+    zeroBalFolio = "N",
     pan = "",
   } = options;
 
@@ -223,5 +232,6 @@ export async function submitCamsCasViaHttp(
   return {
     cams,
     datesSent: { from_date: fromStr, to_date: toStr },
+    zeroBalFolioSent: zeroBalFolio,
   };
 }

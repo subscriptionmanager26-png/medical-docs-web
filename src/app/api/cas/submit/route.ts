@@ -13,6 +13,8 @@ const bodySchema = z.object({
   pan: z.string().max(20).optional().default(""),
   fromDate: z.string().datetime().optional(),
   toDate: z.string().datetime().optional(),
+  /** CAMS `zero_bal_folio`: `N` matches the live site default in most flows. */
+  zeroBalFolio: z.enum(["Y", "N"]).optional().default("N"),
 });
 
 export async function POST(request: NextRequest) {
@@ -32,15 +34,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { email, password, pan, fromDate, toDate } = parsed.data;
+  const { email, password, pan, fromDate, toDate, zeroBalFolio } = parsed.data;
 
   try {
-    const { cams, datesSent } = await submitCamsCasViaHttp({
+    const { cams, datesSent, zeroBalFolioSent } = await submitCamsCasViaHttp({
       email,
       password,
       pan,
       fromDate: fromDate ? new Date(fromDate) : undefined,
       toDate: toDate ? new Date(toDate) : undefined,
+      zeroBalFolio,
     });
 
     const status = cams.status as
@@ -52,8 +55,9 @@ export async function POST(request: NextRequest) {
       status,
       detail: cams.detail ?? null,
       detail1: cams.detail1 ?? null,
-      /** Echo of `from_date` / `to_date` sent to CAMS (DD-MM-YYYY, Asia/Kolkata). */
+      /** Echo of `from_date` / `to_date` (DD-Mon-YYYY, Asia/Kolkata). */
       datesSent,
+      zeroBalFolioSent,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "CAS submit failed";

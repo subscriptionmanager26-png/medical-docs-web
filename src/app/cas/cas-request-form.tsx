@@ -10,6 +10,7 @@ export function CasRequestForm() {
   const [pan, setPan] = useState("");
   const [fromIso, setFromIso] = useState(defaultFrom);
   const [toIso, setToIso] = useState(() => new Date().toISOString());
+  const [includeZeroBalFolios, setIncludeZeroBalFolios] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<unknown>(null);
@@ -29,6 +30,7 @@ export function CasRequestForm() {
           pan: pan.trim() || undefined,
           fromDate: fromIso,
           toDate: toIso,
+          zeroBalFolio: includeZeroBalFolios ? "Y" : "N",
         }),
       });
       const json = (await res.json().catch(() => null)) as
@@ -88,11 +90,23 @@ export function CasRequestForm() {
           className="h-11 rounded-2xl border border-medi-line bg-white px-3 font-mono text-medi-ink outline-none ring-medi-accent/30 focus:ring-2"
         />
       </label>
+      <label className="flex cursor-pointer items-start gap-3 text-sm text-medi-ink">
+        <input
+          type="checkbox"
+          checked={includeZeroBalFolios}
+          onChange={(ev) => setIncludeZeroBalFolios(ev.target.checked)}
+          className="mt-1 size-4 rounded border-medi-line text-medi-accent"
+        />
+        <span>
+          Include zero-balance folios (<code className="rounded bg-medi-canvas px-1">zero_bal_folio=Y</code>). Leave
+          off to match CAMS default <code className="rounded bg-medi-canvas px-1">N</code>.
+        </span>
+      </label>
       <p className="text-xs leading-relaxed text-medi-muted">
-        Period bounds are sent to CAMS as <strong className="font-semibold text-medi-ink">DD-MM-YYYY</strong> using{" "}
-        <strong className="font-semibold text-medi-ink">India (Asia/Kolkata)</strong> calendar days — same idea as
-        picking dates on the CAMS site in India. The API response includes{" "}
-        <code className="rounded bg-medi-canvas px-1">datesSent</code> so you can confirm what was submitted.
+        Period bounds are sent as <strong className="font-semibold text-medi-ink">DD-Mon-YYYY</strong> (e.g.{" "}
+        <code className="rounded bg-medi-canvas px-1">01-Apr-2026</code>) using{" "}
+        <strong className="font-semibold text-medi-ink">Asia/Kolkata</strong>. The response includes{" "}
+        <code className="rounded bg-medi-canvas px-1">datesSent</code> and <code className="rounded bg-medi-canvas px-1">zeroBalFolioSent</code>.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm">
